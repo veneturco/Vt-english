@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, Award, Coins, Flame, Star, CheckCircle2, ChevronRight, RefreshCw } from "lucide-react";
+import { Award, Coins, Flame, CheckCircle2, Sparkles, X } from "lucide-react";
 import { fireParticles } from "../../utils/particleHelper";
-import { playSuccessFanfare, playCoinSound, playJumpSound, playErrorSoft } from "../../utils/audioSynth";
+import { playSuccessFanfare, playJumpSound, playErrorSoft } from "../../utils/audioSynth";
 import { useSpringAnimation } from "../../utils/useSpringAnimation";
 
 export interface DinoMedal {
@@ -9,6 +9,7 @@ export interface DinoMedal {
   name: string;
   description: string;
   icon: string;
+  color: string;
   unlockedAt?: string;
 }
 
@@ -25,11 +26,11 @@ interface DinoEggModalProps {
 const STORAGE_KEY_REWARDS = "vt_dino_egg_rewards_v1";
 
 const REWARD_MEDALS: DinoMedal[] = [
-  { id: "m_dino_star", name: "Dino Star", description: "Master of prehistoric vocabulary!", icon: "⭐" },
-  { id: "m_raptor_speaker", name: "Raptor Speaker", description: "Clear and loud English pronunciation!", icon: "🎙️" },
-  { id: "m_egg_master", name: "Egg Master", description: "Hatched a daily streak mystery egg!", icon: "🥚" },
-  { id: "m_fossil_hunter", name: "Fossil Hunter", description: "Completed 5 adventure levels in a row!", icon: "🦴" },
-  { id: "m_rex_champion", name: "Rex Champion", description: "Fearless English language explorer!", icon: "👑" },
+  { id: "m_dino_star", name: "Dino Star", description: "¡Maestro del vocabulario prehistórico!", icon: "⭐", color: "from-amber-400 to-yellow-500" },
+  { id: "m_raptor_speaker", name: "Raptor Speaker", description: "¡Pronunciación clara y sonora en inglés!", icon: "🎙️", color: "from-sky-400 to-blue-500" },
+  { id: "m_egg_master", name: "Egg Master", description: "¡Has eclosionado el huevo de la racha diaria!", icon: "🥚", color: "from-emerald-400 to-teal-500" },
+  { id: "m_fossil_hunter", name: "Fossil Hunter", description: "¡5 niveles de aventura completados con éxito!", icon: "🦴", color: "from-orange-400 to-amber-600" },
+  { id: "m_rex_champion", name: "Rex Champion", description: "¡Explorador intrépido del idioma inglés!", icon: "👑", color: "from-purple-400 to-pink-500" },
 ];
 
 export const DinoEggModal: React.FC<DinoEggModalProps> = ({
@@ -41,22 +42,22 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
   mascotEmoji = "🦖",
   onEggHatched,
 }) => {
-  const [eggState, setEggState] = useState<"intact" | "cracking" | "hatched">("intact");
+  const [eggState, setEggState] = useState<"intact" | "shaking" | "cracked" | "hatched">("intact");
   const [rewardData, setRewardData] = useState<{ coins: number; medal: DinoMedal } | null>(null);
   const [persistedCoins, setPersistedCoins] = useState<number>(100);
   const [persistedMedals, setPersistedMedals] = useState<string[]>([]);
   const eggContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Hook de físicas de resorte para el rebote del huevo al hacer clic o temblar
+  // Físicas elásticas para squash and stretch del huevo
   const { ref: eggSpringRef, triggerBounce: triggerEggBounce } = useSpringAnimation<HTMLDivElement>({
-    tension: 240,
-    friction: 10,
+    tension: 250,
+    friction: 12,
     mass: 0.9,
   });
 
   const isReadyToHatch = completedTodayCount >= dailyGoal;
 
-  // Cargar estado de recompensas desde LocalStorage
+  // Cargar estado de premios desde LocalStorage
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
@@ -72,7 +73,7 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
     }
   }, []);
 
-  // Reiniciar estado visual si se abre el modal
+  // Reset del ciclo al abrir el modal
   useEffect(() => {
     if (isOpen) {
       setEggState("intact");
@@ -82,40 +83,49 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Ejecución de la animación de eclosión
+  // Manejo de la secuencia cinematográfica de eclosión
   const handleEggClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isReadyToHatch) {
       playErrorSoft();
-      triggerEggBounce(1.18, 0.88);
+      triggerEggBounce(1.15, 0.88);
       return;
     }
 
-    if (eggState === "hatched") return;
+    if (eggState !== "intact") return;
 
-    if (eggState === "intact") {
-      playJumpSound();
-      triggerEggBounce(1.35, 0.7);
-      setEggState("cracking");
+    // Paso 1: Vibración de inicio
+    playJumpSound();
+    triggerEggBounce(1.3, 0.72);
+    setEggState("shaking");
 
-      // Explosión y eclosión a los 400ms
+    // Paso 2: Cascarón con grietas luminosas (a los 250ms)
+    setTimeout(() => {
+      setEggState("cracked");
+      triggerEggBounce(0.8, 1.35);
+
+      // Paso 3: Ruptura total, explosión y revelación centrada (a los 650ms)
       setTimeout(() => {
         setEggState("hatched");
         playSuccessFanfare();
 
-        // Obtener coordenadas del huevo para la ráfaga de partículas
-        const rect = e.currentTarget.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
+        // Disparo de partículas desde el centro del huevo
+        if (eggContainerRef.current) {
+          const rect = eggContainerRef.current.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          fireParticles(centerX, centerY, "stars", 55);
+          fireParticles(centerX, centerY, "confetti", 75);
+        } else {
+          fireParticles(window.innerWidth / 2, window.innerHeight / 2, "stars", 55);
+          fireParticles(window.innerWidth / 2, window.innerHeight / 2, "confetti", 75);
+        }
 
-        fireParticles(centerX, centerY, "stars", 50);
-        fireParticles(centerX, centerY, "confetti", 70);
-
-        // Notificar a la mascota global
+        // Salto global para mascotas activas
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("mascot-action", { detail: { action: "jump" } }));
         }
 
-        // Selección aleatoria de medalla
+        // Elegir medalla
         const availableMedals = REWARD_MEDALS.filter((m) => !persistedMedals.includes(m.id));
         const chosenMedal = availableMedals.length > 0
           ? availableMedals[Math.floor(Math.random() * availableMedals.length)]
@@ -134,7 +144,7 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
         };
         setRewardData(newReward);
 
-        // Guardar en LocalStorage
+        // Guardar progreso en LocalStorage
         try {
           localStorage.setItem(
             STORAGE_KEY_REWARDS,
@@ -151,15 +161,15 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
         if (onEggHatched) {
           onEggHatched(newReward);
         }
-      }, 450);
-    }
+      }, 400);
+    }, 250);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      {/* Contenedor Principal del Modal con Glassmorphism */}
-      <div className="relative w-full max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900/90 dark:bg-slate-950/95 backdrop-blur-2xl border-2 border-amber-400/30 shadow-[0_25px_60px_rgba(0,0,0,0.6)] flex flex-col items-center select-none overflow-hidden text-center">
-        {/* Luces decorativas de fondo */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+      {/* Contenedor Principal Glassmorphism */}
+      <div className="relative w-full max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-2xl border-2 border-amber-400/30 shadow-[0_25px_60px_rgba(0,0,0,0.7)] flex flex-col items-center select-none overflow-hidden text-center">
+        {/* Resplandores ambientales de fondo */}
         <div className="absolute -top-24 -left-24 w-56 h-56 bg-amber-500/25 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-56 h-56 bg-emerald-500/25 rounded-full blur-3xl pointer-events-none" />
 
@@ -168,39 +178,39 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
           onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs transition cursor-pointer z-20"
         >
-          ✕
+          <X className="w-4 h-4" />
         </button>
 
-        {/* HEADER: Racha & Título */}
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/40 text-amber-300 mb-4 shadow-inner">
+        {/* HEADER: Racha & Monedas */}
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/40 text-amber-300 mb-3 shadow-inner">
           <Flame className="w-4 h-4 text-orange-400 fill-orange-400 animate-pulse" />
           <span className="text-xs font-black uppercase tracking-wider">
-            {currentStreak} Días de Racha!
+            {currentStreak} Días de Racha
           </span>
-          <span className="text-slate-400">•</span>
+          <span className="text-slate-500">•</span>
           <span className="text-xs font-bold text-amber-200">
             {persistedCoins} 🪙
           </span>
         </div>
 
-        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug">
+        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
           {eggState === "hatched"
-            ? "¡HUEVO ECLOSIONADO!"
+            ? "¡PREMIO DESBLOQUEADO!"
             : isReadyToHatch
-            ? "¡TU HUEVO ESTÁ LISTO!"
+            ? "¡HUEVO LISTO PARA ABRIR!"
             : "INCUBADORA DE DINOSAURIO"}
         </h2>
 
         <p className="text-xs text-slate-400 font-medium mt-1 max-w-xs">
           {eggState === "hatched"
-            ? "¡Has desbloqueado una medalla legendaria y monedas!"
+            ? "¡Has descubierto una medalla coleccionable y monedas!"
             : isReadyToHatch
             ? "¡Toca el huevo para romper el cascarón y recibir tu premio!"
-            : `Completa tus lecciones de hoy para incubar el huevo sorpresa.`}
+            : "Completa tu racha de hoy para abrir el huevo sorpresa."}
         </p>
 
-        {/* BARRA DE PROGRESO DE LA RACHA (Ej. 4/5 o 5/5) */}
-        <div className="w-full max-w-xs my-5">
+        {/* BARRA DE PROGRESO DE LA RACHA */}
+        <div className="w-full max-w-xs my-4">
           <div className="flex items-center justify-between text-xs font-black mb-1.5 px-1">
             <span className="text-slate-400">Progreso Diario</span>
             <span className={isReadyToHatch ? "text-emerald-400" : "text-amber-400"}>
@@ -220,66 +230,142 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
           </div>
         </div>
 
-        {/* EL HUEVO DINOSAURIO INTERACTIVO O RECOMPENSA DESBLOQUEADA */}
-        <div className="relative my-2 flex items-center justify-center min-h-[180px]">
+        {/* CONTENEDOR CENTRAL: HUEVO / SECUENCIA DE QUIEBRE / RECOMPENSA */}
+        <div
+          ref={eggContainerRef}
+          className="relative my-3 flex items-center justify-center min-h-[220px] w-full"
+        >
           {eggState !== "hatched" ? (
             <div
               ref={eggSpringRef}
               onClick={handleEggClick}
               className={`
-                relative w-36 h-48 sm:w-40 sm:h-52 rounded-[50%_50%_46%_46%/60%_60%_40%_40%]
-                cursor-pointer select-none transition-all duration-300 will-change-transform
-                flex flex-col items-center justify-center border-4
-                ${
-                  isReadyToHatch
-                    ? "bg-gradient-to-b from-amber-200 via-amber-300 to-amber-500 border-amber-100 shadow-[0_0_40px_rgba(251,191,36,0.6)] animate-bounce"
-                    : "bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 border-slate-600 opacity-80"
-                }
+                relative w-40 h-52 sm:w-44 sm:h-56 cursor-pointer select-none
+                flex flex-col items-center justify-center will-change-transform
+                ${eggState === "shaking" ? "animate-bounce" : ""}
               `}
             >
-              {/* Manchas del Huevo */}
-              <div className="absolute top-8 left-6 w-7 h-7 rounded-full bg-amber-600/30 blur-[1px]" />
-              <div className="absolute top-20 right-5 w-9 h-9 rounded-full bg-amber-600/30 blur-[1px]" />
-              <div className="absolute bottom-10 left-8 w-10 h-10 rounded-full bg-amber-600/30 blur-[1px]" />
+              {/* HUEVO VECTORIAL SVG CON GRIETAS DINÁMICAS */}
+              <svg
+                viewBox="0 0 160 210"
+                className={`w-full h-full filter drop-shadow-2xl transition-transform duration-300 ${
+                  isReadyToHatch ? "hover:scale-105 active:scale-95" : "opacity-80"
+                }`}
+              >
+                <defs>
+                  {/* Gradiente del cascarón dorado */}
+                  <linearGradient id="eggGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fef08a" />
+                    <stop offset="40%" stopColor="#fde047" />
+                    <stop offset="85%" stopColor="#f59e0b" />
+                    <stop offset="100%" stopColor="#d97706" />
+                  </linearGradient>
 
-              {/* Grietas de Quiebre al Tocarlo (Estado Cracking) */}
-              {eggState === "cracking" ? (
-                <div className="text-5xl font-black text-amber-950 animate-ping">
-                  ⚡
-                </div>
-              ) : (
-                <span className="text-4xl filter drop-shadow">
-                  {isReadyToHatch ? "✨" : "🔒"}
-                </span>
-              )}
+                  {/* Gradiente bloqueado */}
+                  <linearGradient id="eggLockedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#475569" />
+                    <stop offset="100%" stopColor="#1e293b" />
+                  </linearGradient>
 
-              {/* Brillo Superior del Cascarón */}
-              <div className="absolute top-4 left-6 w-12 h-6 rounded-full bg-white/40 rotate-[-25deg] blur-[2px]" />
+                  {/* Filtro de brillo */}
+                  <filter id="eggGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
 
-              {isReadyToHatch && (
-                <div className="absolute -bottom-3 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-lg animate-pulse border border-white">
-                  ¡Tócame!
+                {/* Sombra de la base */}
+                <ellipse cx="80" cy="195" rx="55" ry="12" fill="#000000" opacity="0.4" />
+
+                {/* Resplandor exterior cuando está listo */}
+                {isReadyToHatch && (
+                  <path
+                    d="M 80,10 C 135,10 152,85 152,145 C 152,185 125,200 80,200 C 35,200 8,185 8,145 C 8,85 25,10 80,10 Z"
+                    fill="none"
+                    stroke="#fde047"
+                    strokeWidth="6"
+                    opacity="0.5"
+                    filter="url(#eggGlow)"
+                  />
+                )}
+
+                {/* Cascarón del huevo */}
+                <path
+                  d="M 80,10 C 135,10 152,85 152,145 C 152,185 125,200 80,200 C 35,200 8,185 8,145 C 8,85 25,10 80,10 Z"
+                  fill={isReadyToHatch ? "url(#eggGrad)" : "url(#eggLockedGrad)"}
+                  stroke={isReadyToHatch ? "#fef08a" : "#64748b"}
+                  strokeWidth="4"
+                />
+
+                {/* Manchas divertidas del huevo */}
+                <circle cx="50" cy="65" r="14" fill="#b45309" opacity="0.35" />
+                <circle cx="115" cy="95" r="18" fill="#b45309" opacity="0.35" />
+                <circle cx="65" cy="150" r="20" fill="#b45309" opacity="0.35" />
+                <circle cx="110" cy="165" r="12" fill="#b45309" opacity="0.35" />
+
+                {/* Brillo especular superior */}
+                <path
+                  d="M 45,35 C 55,20 75,18 75,18 C 75,18 55,25 48,48 C 45,42 45,35 45,35 Z"
+                  fill="#ffffff"
+                  opacity="0.65"
+                />
+
+                {/* GRIETAS DE ECLOSIÓN (Estado cracked o shaking) */}
+                {(eggState === "cracked" || eggState === "shaking") && (
+                  <g stroke="#78350f" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none">
+                    {/* Grieta principal central en zig-zag */}
+                    <path d="M 80,45 L 70,75 L 95,100 L 65,130 L 90,155 L 75,180" className="animate-pulse" />
+                    {/* Ramificaciones laterales */}
+                    <path d="M 70,75 L 45,85" />
+                    <path d="M 95,100 L 125,110" />
+                    <path d="M 65,130 L 40,140" />
+                  </g>
+                )}
+
+                {/* Candado si está bloqueado */}
+                {!isReadyToHatch && (
+                  <text x="80" y="125" fontSize="32" textAnchor="middle" fill="#94a3b8">
+                    🔒
+                  </text>
+                )}
+              </svg>
+
+              {/* Etiqueta interactiva inferior */}
+              {isReadyToHatch && eggState === "intact" && (
+                <div className="absolute -bottom-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-lg animate-bounce border-2 border-white">
+                  ¡Toca para Romper!
                 </div>
               )}
             </div>
           ) : (
-            /* RECOMPENSA FLOTANTE DESBLOQUEADA */
-            <div className="flex flex-col items-center animate-in zoom-in-50 duration-500">
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 border-4 border-white shadow-[0_0_35px_rgba(251,191,36,0.8)] flex items-center justify-center text-6xl animate-bounce">
-                <span className="filter drop-shadow-md">{rewardData?.medal.icon || "⭐"}</span>
-                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow border border-white">
-                  <CheckCircle2 className="w-5 h-5" />
+            /* RECOMPENSA REVELADA (Centrada, limpia y con animación Zoom In) */
+            <div className="flex flex-col items-center justify-center animate-in zoom-in-50 duration-500 w-full">
+              {/* Tarjeta / Medalla Flotante */}
+              <div
+                className={`relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-tr ${
+                  rewardData?.medal.color || "from-amber-400 to-yellow-500"
+                } border-4 border-white shadow-[0_0_40px_rgba(251,191,36,0.7)] flex items-center justify-center text-5xl sm:text-6xl animate-bounce`}
+              >
+                <span className="filter drop-shadow-md select-none">
+                  {rewardData?.medal.icon || "⭐"}
+                </span>
+
+                {/* Badge de Verificación */}
+                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                  <CheckCircle2 className="w-5 h-5 stroke-[3]" />
                 </div>
               </div>
 
-              <h3 className="text-xl font-black text-amber-300 mt-4 tracking-tight">
+              {/* Nombre y Descripción */}
+              <h3 className="text-xl sm:text-2xl font-black text-amber-300 mt-4 tracking-tight">
                 {rewardData?.medal.name}
               </h3>
-              <p className="text-xs text-slate-300 font-semibold max-w-xs mt-0.5">
+              <p className="text-xs text-slate-300 font-semibold max-w-xs mt-1 leading-relaxed">
                 {rewardData?.medal.description}
               </p>
 
-              <div className="flex items-center gap-2 mt-3 px-4 py-1.5 rounded-2xl bg-amber-400/20 border border-amber-400/40 text-amber-300 font-black text-sm shadow">
+              {/* Monedas Extras Ganadas */}
+              <div className="flex items-center gap-2 mt-3 px-4 py-1.5 rounded-2xl bg-amber-400/20 border border-amber-400/50 text-amber-300 font-black text-sm shadow-md">
                 <Coins className="w-4 h-4 text-amber-400 fill-amber-400 animate-spin" />
                 <span>+{rewardData?.coins} Monedas Extra</span>
               </div>
@@ -287,9 +373,10 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
           )}
         </div>
 
-        {/* FOOTER: Botones de Acción */}
-        <div className="w-full mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between z-10">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+        {/* FOOTER: Colección & Botón de Acción */}
+        <div className="w-full mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between z-10">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+            <Award className="w-4 h-4 text-amber-400" />
             <span>Colección:</span>
             <span className="text-amber-400 font-black">{persistedMedals.length}</span>
             <span>/ {REWARD_MEDALS.length}</span>
@@ -300,15 +387,15 @@ export const DinoEggModal: React.FC<DinoEggModalProps> = ({
               onClick={onClose}
               className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-black text-xs sm:text-sm shadow-[0_4px_0_#065f46] hover:brightness-110 active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer"
             >
-              <span>¡Genial, Gracias!</span>
-              <Award className="w-4 h-4" />
+              <span>¡Genial!</span>
+              <Sparkles className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
             >
-              Cerrar
+              Volver al mapa
             </button>
           )}
         </div>
