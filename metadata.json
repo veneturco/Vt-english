@@ -1,0 +1,6 @@
+{
+  "name": "VT English IA",
+  "description": "Interactive English Learning web app with animated 2.5D AI Avatars (Super Mario, Luigi, Goomba, Dinosaurs & Turpial), speech recognition, phonetics coach, and interactive Kids & Adults modes.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
