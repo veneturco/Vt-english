@@ -30,7 +30,7 @@ function getGeminiClient(): GoogleGenAI {
   });
 }
 
-// Prioritized Gemini models pool: Uses official supported models (gemini-3.7-flash and gemini-3.1-flash-lite)
+// Prioritized Gemini models pool: Uses official supported models
 const MODELS_TO_TRY = [
   "gemini-3.7-flash",
   "gemini-3.1-flash-lite",
@@ -59,15 +59,25 @@ async function generateWithRetryAndFallback(
       }
     } catch (err: any) {
       lastError = err;
-      const isQuotaError = err?.status === 429 || err?.message?.includes("429") || err?.message?.includes("RESOURCE_EXHAUSTED") || err?.message?.includes("Quota exceeded");
-      console.warn(`[Gemini Fallback] Model ${model} unavailable (${isQuotaError ? "Quota 429" : err?.message?.slice(0, 80)}). Trying next candidate...`);
-      // Brief pause before trying next model
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const isQuotaOrBusy =
+        err?.status === 429 ||
+        err?.status === 503 ||
+        err?.message?.includes("429") ||
+        err?.message?.includes("503") ||
+        err?.message?.includes("high demand") ||
+        err?.message?.includes("RESOURCE_EXHAUSTED") ||
+        err?.message?.includes("Quota exceeded");
+
+      console.warn(
+        `[Gemini Fallback] Model ${model} unavailable (${isQuotaOrBusy ? (err?.status ? `Status ${err.status}` : "High Demand/Busy") : err?.message?.slice(0, 80)}). Trying next candidate...`
+      );
+      // Brief pause before trying next candidate model
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
   }
 
-  // Simplified prompt fallback without schema enforcement
-  for (const fallbackModel of ["gemini-3.7-flash", "gemini-3.1-flash-lite"]) {
+  // Fallback with relaxed JSON generation on flash lite
+  for (const fallbackModel of ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.7-flash"]) {
     try {
       const simplifiedResponse = await ai.models.generateContent({
         model: fallbackModel,
