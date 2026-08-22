@@ -214,6 +214,74 @@ class Audio8BitSynthEngine {
       osc.stop(t + 0.07);
     });
   }
+
+  /**
+   * 7. Fanfarria de Victoria Infantil (playVictoryFanfare)
+   * Arpegio rápido ascendente brillante (C5 -> E5 -> G5 -> C6 -> E6)
+   */
+  public playVictoryFanfare(): void {
+    if (this.isMuted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notes = [
+      { freq: 523.25, time: 0.0, duration: 0.08 }, // C5
+      { freq: 659.25, time: 0.08, duration: 0.08 }, // E5
+      { freq: 783.99, time: 0.16, duration: 0.08 }, // G5
+      { freq: 1046.5, time: 0.24, duration: 0.14 }, // C6
+      { freq: 1318.5, time: 0.38, duration: 0.45 }, // E6
+    ];
+
+    notes.forEach((n) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(n.freq, now + n.time);
+      gain.gain.setValueAtTime(0.2, now + n.time);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + n.time + n.duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + n.time);
+      osc.stop(now + n.time + n.duration + 0.01);
+    });
+  }
+
+  /**
+   * 8. Sonido de Moneda / Bling (playCoinCollect)
+   */
+  public playCoinCollect(): void {
+    this.playCoinSound();
+  }
+
+  /**
+   * 9. Sonido Suave de Reintento (playTryAgainSoft)
+   * Tono amable y curioso con onda sinusoidal suave (no punitivo)
+   */
+  public playTryAgainSoft(): void {
+    if (this.isMuted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(392, now); // G4
+    osc.frequency.exponentialRampToValueAtTime(440, now + 0.12); // A4
+    osc.frequency.exponentialRampToValueAtTime(349.23, now + 0.28); // F4
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.33);
+  }
 }
 
 // Instancia singleton exportada
@@ -221,8 +289,11 @@ export const audioSynth = new Audio8BitSynthEngine();
 
 // Funciones utilitarias directas
 export const playCoinSound = () => audioSynth.playCoinSound();
+export const playCoinCollect = () => audioSynth.playCoinCollect();
 export const playJumpSound = () => audioSynth.playJumpSound();
 export const playErrorSoft = () => audioSynth.playErrorSoft();
+export const playTryAgainSoft = () => audioSynth.playTryAgainSoft();
 export const playSuccessFanfare = () => audioSynth.playSuccessFanfare();
+export const playVictoryFanfare = () => audioSynth.playVictoryFanfare();
 export const playPopSound = () => audioSynth.playPopSound();
 export const playPowerupSound = () => audioSynth.playPowerupSound();
