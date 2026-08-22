@@ -632,97 +632,68 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       </div>
 
       {/* Top Header Bar for Kids */}
-      <header className="w-full bg-slate-900/90 backdrop-blur-2xl border-b border-amber-500/20 sticky top-0 z-30 px-3 sm:px-6 py-2.5 shadow-lg shadow-black/40">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+      <header className="w-full bg-slate-900/95 backdrop-blur-2xl border-b border-amber-500/20 sticky top-0 z-30 px-2 sm:px-6 py-2 shadow-lg shadow-black/40">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Logo & Adventure Title */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <button
               onClick={() => {
                 kidsSFX.playPopBubble();
                 setActiveView("map");
               }}
-              className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-amber-500 to-rose-500 p-0.5 shadow-lg shadow-emerald-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-amber-500 to-rose-500 p-0.5 shadow-lg shadow-emerald-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition"
               title="Volver al Mapa de Aventura"
             >
-              <span className="text-xl">🗺️</span>
+              <span className="text-lg sm:text-xl">🗺️</span>
             </button>
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
-                  VT English IA Kids
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <h1 className="text-sm sm:text-lg font-black tracking-tight bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200 bg-clip-text text-transparent truncate max-w-[110px] sm:max-w-none">
+                  VT Kids
                 </h1>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
-                  Modo Niños 4-12
+                <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 hidden xs:inline">
+                  Niños
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium hidden xs:block">
-                Aprende jugando con Pip, Rexy, Mario y Luigi
-              </p>
             </div>
           </div>
 
-          {/* Right Controls: Coins, Stars, Incubator Egg, Shop & Mode Switch */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Right Controls: Coins, Stars, Shop & High-Visibility Adults Mode Switch */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Fossil Coins */}
             <div
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black shadow-sm cursor-pointer hover:bg-amber-500/30 transition active:scale-95"
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black shadow-sm cursor-pointer hover:bg-amber-500/30 transition active:scale-95"
               onClick={() => {
                 kidsSFX.playCoinSound();
                 setIsShopOpen(true);
               }}
               title="Monedas Fósil para la Tienda"
             >
-              <span className="text-sm">🪙</span>
-              <span>{kidsProgress.fossilCoins}</span>
+              <span className="text-xs sm:text-sm">🪙</span>
+              <span className="text-xs">{kidsProgress.fossilCoins}</span>
             </div>
 
             {/* Stars Counter Pill */}
             <div
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-black shadow-md shadow-amber-500/10 cursor-pointer hover:scale-105 active:scale-95 transition"
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-300 text-xs font-black shadow-md shadow-amber-500/10 cursor-pointer hover:scale-105 active:scale-95 transition"
               onClick={() => {
                 kidsSFX.playPopBubble();
                 setIsStickerAlbumOpen(true);
               }}
               title="Toca para ver tu Álbum de Stickers"
             >
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400 animate-spin" />
-              <span>{kidsProgress.totalStars}</span>
+              <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              <span className="text-xs">{kidsProgress.totalStars}</span>
             </div>
 
-            {/* Egg Incubator Pill (Daily Quest) */}
-            <button
-              onClick={handleHatchEggClick}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-900/80 transition active:scale-95"
-              title={`Incubadora Dino: Reto Diario ${kidsProgress.dailyQuestsCompleted}/5`}
-            >
-              <span className="text-sm animate-bounce">{currentEgg.emoji}</span>
-              <span className="hidden md:inline font-bold">
-                {kidsProgress.dailyQuestsCompleted >= 5 ? "¡Listo! 🎁" : `${kidsProgress.dailyQuestsCompleted}/5`}
-              </span>
-            </button>
-
-            {/* Shop Button */}
-            <button
-              onClick={() => {
-                kidsSFX.playPopBubble();
-                setIsShopOpen(true);
-              }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-orange-950/60 hover:bg-orange-900/60 text-orange-300 border border-orange-500/40 text-xs font-bold transition active:scale-95 shadow-sm"
-              title="Tienda de Exploradores"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span className="hidden md:inline">Tienda</span>
-            </button>
-
-            {/* Switch to Adults Mode */}
+            {/* Switch to Adults Mode Button - Ultra prominent for Mobile */}
             <button
               onClick={onSwitchToAdultsMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-bold transition active:scale-95 shadow-md"
-              title="Regresar al modo para adultos"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/40 border border-indigo-400/40 active:scale-95 transition cursor-pointer shrink-0"
+              title="Cambiar a Modo Adultos"
             >
-              <span>🧑</span>
-              <span className="hidden md:inline">Adultos Pro</span>
-              <span className="md:hidden">Adultos</span>
+              <span>💼</span>
+              <span className="font-bold">Adultos</span>
             </button>
           </div>
         </div>
@@ -1577,6 +1548,17 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Floating Mobile Quick Switch to Adults */}
+      <div className="fixed bottom-4 right-4 z-40 sm:hidden">
+        <button
+          onClick={onSwitchToAdultsMode}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-900/95 border-2 border-indigo-500/80 text-white shadow-xl shadow-black/80 text-xs font-black backdrop-blur-md active:scale-90 transition"
+        >
+          <span className="text-sm">💼</span>
+          <span>Modo Adultos</span>
+        </button>
+      </div>
     </div>
   );
 };

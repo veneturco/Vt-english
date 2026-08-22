@@ -122,6 +122,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Consolidated Tools & Tutor Pill */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Switch to Kids Mode Button */}
+          <button
+            onClick={onSwitchToKidsMode}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 text-[11px] sm:text-xs font-black shadow-sm transition active:scale-95"
+            title="Ir a Modo Niños"
+          >
+            <span>🦖</span>
+            <span className="font-extrabold">Niños</span>
+          </button>
+
           {/* Avatar Customizer Direct Access Button */}
           <button
             id="nav-avatar-customizer-button"
