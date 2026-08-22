@@ -17,6 +17,13 @@ import {
   saveStoredKidsProgress,
   kidsSFX,
 } from "../utils/kidsAudioAndStorage";
+import {
+  playCoinSound,
+  playJumpSound,
+  playErrorSoft,
+  playSuccessFanfare,
+  playPopSound,
+} from "../utils/audioSynth";
 import { speakText } from "../utils/speech";
 import { Avatar2DCanvas } from "./Avatar2DCanvas";
 import { ParticleEngine } from "./effects/ParticleEngine";
@@ -418,10 +425,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           (ageGroup === "preschool" && transcript.length >= 2);
 
         if (isAcceptable) {
-          kidsSFX.playJumpSound();
+          playJumpSound();
           handleSuccessReward(3);
         } else {
-          kidsSFX.playErrorSoft();
+          playErrorSoft();
           setComboCount(0);
           setMascotMood("encouraging");
           setFeedbackMessage({
@@ -449,7 +456,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
   // Reward calculation and state update
   const handleSuccessReward = (starsEarned: number = 3) => {
-    kidsSFX.playSuccessFanfare();
+    playSuccessFanfare();
     setMascotMood("celebrating");
     const newCombo = comboCount + 1;
     setComboCount(newCombo);
@@ -539,7 +546,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
   // Dino Egg Hatching Modal Trigger
   const handleHatchEggClick = () => {
-    kidsSFX.playPopBubble();
+    playPopSound();
     setIsEggModalOpen(true);
     setEggCrackAnim(false);
   };
@@ -573,12 +580,12 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
   const handleBuyShopItem = (item: (typeof EXPLORER_SHOP_ITEMS)[0]) => {
     if (kidsProgress.fossilCoins < item.price) {
-      kidsSFX.playErrorSoft();
+      playErrorSoft();
       alert(`¡Necesitas ${item.price} Monedas Fósil! Sigue completando niveles.`);
       return;
     }
 
-    kidsSFX.playCoinSound();
+    playCoinSound();
     const updated = {
       ...kidsProgress,
       fossilCoins: kidsProgress.fossilCoins - item.price,
@@ -592,20 +599,20 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   };
 
   const openLevel = (cardIndex: number) => {
-    kidsSFX.playPopBubble();
+    playPopSound();
     setCurrentCardIndex(cardIndex);
     setFeedbackMessage(null);
     setActiveView("level");
   };
 
   const nextCard = () => {
-    kidsSFX.playPopBubble();
+    playPopSound();
     setFeedbackMessage(null);
     setCurrentCardIndex((prev) => (prev + 1) % currentWorld.cards.length);
   };
 
   const prevCard = () => {
-    kidsSFX.playPopBubble();
+    playPopSound();
     setFeedbackMessage(null);
     setCurrentCardIndex(
       (prev) => (prev - 1 + currentWorld.cards.length) % currentWorld.cards.length

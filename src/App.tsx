@@ -59,7 +59,8 @@ import { VocabularyNotebookModal } from "./components/VocabularyNotebookModal";
 import { TranscriptHistory } from "./components/TranscriptHistory";
 import { PhoneticCoachModal } from "./components/PhoneticCoachModal";
 import { BottomNavBar, MainAppTab } from "./components/BottomNavBar";
-import { LearningPathView } from "./components/LearningPathView";
+import { AdultLearningPath, LessonNode } from "./components/AdultLearningPath";
+import { LessonEngineView } from "./components/LessonEngineView";
 import { ToolsHubView } from "./components/ToolsHubView";
 import { PlacementTestModal } from "./components/PlacementTestModal";
 import { QuestsAndShopModal } from "./components/QuestsAndShopModal";
@@ -160,6 +161,7 @@ export default function App() {
   const [isToolsDrawerOpen, setIsToolsDrawerOpen] = useState(false);
   const [isResearchRoadmapOpen, setIsResearchRoadmapOpen] = useState(false);
   const [isRoleplayModalOpen, setIsRoleplayModalOpen] = useState(false);
+  const [activeLessonNode, setActiveLessonNode] = useState<LessonNode | null>(null);
   const [ambienceMode, setAmbienceMode] = useState<string>("off");
   const [ambienceVolume, setAmbienceVolume] = useState<number>(0.25);
   const [phoneticModalTab, setPhoneticModalTab] = useState<"articulation" | "stress" | "minimal_pairs" | "linking">("articulation");
@@ -741,16 +743,19 @@ export default function App() {
       {/* Main Tabbed Views: Conversar vs. Camino vs. Herramientas */}
       {activeMainTab === "path" ? (
         <main className="flex-1 w-full mx-auto z-10">
-          <LearningPathView
+          <AdultLearningPath
             currentLevel={cefrLevel}
-            onSelectScenario={(scId) => {
-              const matchedScenario =
-                TOPIC_SCENARIOS.find((t) => t.id === scId) || TOPIC_SCENARIOS[0];
-              handleSelectTopic(matchedScenario);
-              setActiveMainTab("chat");
+            streakDays={gamification.streakDays}
+            gemsCount={gamification.gems}
+            onStartLesson={(node) => {
+              if (node.type === "boss_roleplay") {
+                setIsRoleplayModalOpen(true);
+              } else {
+                setActiveLessonNode(node);
+              }
             }}
-            onOpenSpeedSpeaking={() => setIsSpeedSpeakingModalOpen(true)}
-            onOpenDiagnostic={() => setIsPlacementTestOpen(true)}
+            onOpenRoleplayModal={() => setIsRoleplayModalOpen(true)}
+            onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
           />
         </main>
       ) : activeMainTab === "tools" ? (
@@ -775,6 +780,7 @@ export default function App() {
             onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
             onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
             onSwitchToKidsMode={handleSwitchToKidsMode}
+            onStartDailyPractice={() => setActiveMainTab("chat")}
             streakDays={gamification.streakDays}
             gemsCount={gamification.gems}
           />
@@ -1214,6 +1220,24 @@ export default function App() {
         onClose={() => setIsRoleplayModalOpen(false)}
         onSelectScenario={handleSelectRoleplayScenario}
       />
+
+      {activeLessonNode && (
+        <LessonEngineView
+          lessonTitle={activeLessonNode.title}
+          lessonSubtitle={activeLessonNode.subtitle}
+          initialXpReward={activeLessonNode.xp}
+          onClose={() => setActiveLessonNode(null)}
+          onComplete={(xpEarned) => {
+            const updatedGam = {
+              ...gamification,
+              xpPoints: gamification.xpPoints + xpEarned,
+              gems: gamification.gems + 5,
+            };
+            setGamification(updatedGam);
+            saveStoredGamification(updatedGam);
+          }}
+        />
+      )}
     </div>
   );
 }
