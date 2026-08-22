@@ -1498,22 +1498,22 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
       />
       
       {/* Badge de Estado del Tutor */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161b22]/80 backdrop-blur-md border border-slate-700/50 text-xs text-slate-300 pointer-events-none">
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs text-slate-300 pointer-events-none shadow-sm">
         <span
-          className={`w-2 h-2 rounded-full ${
+          className={`w-2.5 h-2.5 rounded-full ${
             animationState === "speaking"
-              ? "bg-purple-400 animate-ping"
+              ? "bg-purple-400 animate-pulse"
               : isListening
               ? "bg-sky-400 animate-pulse"
               : "bg-emerald-400"
           }`}
         />
-        <span className="font-medium text-slate-200">
+        <span className="font-bold text-slate-200">
           {animationState === "speaking"
             ? `${config.name} hablando...`
             : isListening
             ? "Escuchándote..."
-            : "En línea (Listo)"}
+            : "En línea"}
         </span>
       </div>
 
@@ -1522,7 +1522,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         <button
           type="button"
           onClick={() => setShowDiagnosticModal(true)}
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold shadow-lg backdrop-blur-md transition active:scale-95"
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-2 border-b-4 border-amber-500/60 active:border-b-2 active:translate-y-0.5 text-xs font-bold shadow-sm transition"
           title="Ver informe diagnóstico 3D completo del archivo .GLB"
         >
           <Feather className="w-3.5 h-3.5 text-amber-400" />
@@ -1531,22 +1531,22 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
       )}
 
       {/* Badge de Especie / Identidad BET */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161b22]/85 backdrop-blur-md border border-slate-700/60 text-xs font-semibold text-amber-300 shadow-md pointer-events-none">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs font-bold text-amber-300 shadow-sm pointer-events-none">
         <span className="text-sm">{emoji}</span>
         <span className="text-slate-100">{config.name}</span>
         {config.badgeText && (
-          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-blue-600/30 text-blue-300 border border-blue-500/30">
+          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40">
             {config.badgeText}
           </span>
         )}
       </div>
 
       {/* Barra de Controles Rápidos de Rotación 3D (Giro 180°, Paso 45°, Reset) */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 px-2.5 rounded-full bg-slate-950/85 backdrop-blur-xl border border-white/15 shadow-2xl">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 px-2 rounded-2xl bg-slate-900 border-2 border-slate-800 shadow-sm">
         <button
           type="button"
           onClick={() => handleRotateBy(Math.PI)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition active:scale-95 shadow-sm"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold transition shadow-sm"
           title="Girar 180° para ver de frente o espalda"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -1556,7 +1556,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         <button
           type="button"
           onClick={() => handleRotateBy(-Math.PI / 4)}
-          className="p-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs transition active:scale-95"
+          className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
           title="Rotar -45° a la izquierda"
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -1565,7 +1565,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         <button
           type="button"
           onClick={() => handleRotateBy(Math.PI / 4)}
-          className="p-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs transition active:scale-95"
+          className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
           title="Rotar +45° a la derecha"
         >
           <RotateCw className="w-3.5 h-3.5" />
@@ -1574,15 +1574,15 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         <button
           type="button"
           onClick={handleResetFront}
-          className="px-2 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold transition active:scale-95"
+          className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-[11px] font-bold transition"
           title="Restablecer orientación de frente"
         >
           Frente
         </button>
 
-        <div className="hidden sm:flex items-center gap-1 pl-1 pr-1.5 text-[10px] text-slate-400 border-l border-white/10">
+        <div className="hidden sm:flex items-center gap-1 pl-1 pr-1 text-[10px] text-slate-400 border-l border-slate-700">
           <MoveHorizontal className="w-3 h-3 text-slate-400" />
-          <span>Arrastra 360°</span>
+          <span>360°</span>
         </div>
       </div>
 

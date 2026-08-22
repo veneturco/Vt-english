@@ -54,17 +54,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     TEACHING_MODES.find((m) => m.id === teachingMode) || TEACHING_MODES[0];
 
   return (
-    <header className="w-full bg-[#090d16]/95 backdrop-blur-2xl border-b border-white/[0.08] sticky top-0 z-30 px-2 sm:px-6 py-2 transition-all">
+    <header className="w-full bg-slate-900 border-b-2 border-slate-800 sticky top-0 z-30 px-2 sm:px-6 py-2 transition-all select-none">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
         {/* Left: Brand Pill Logo */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 p-1 pl-1.5 pr-3 rounded-full bg-slate-900/90 border border-white/10 shadow-sm">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-300 flex items-center justify-center shadow-inner">
-              <span className="font-black text-[#0d1117] text-[10px] sm:text-xs tracking-tighter">
+          <div className="flex items-center gap-1.5 p-1 pl-1.5 pr-3 rounded-2xl bg-slate-950 border-2 border-slate-800 shadow-sm">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-400 flex items-center justify-center border border-amber-500">
+              <span className="font-black text-slate-950 text-[10px] sm:text-xs tracking-tighter">
                 VT
               </span>
             </div>
-            <span className="font-extrabold text-white text-xs sm:text-sm tracking-tight whitespace-nowrap">
+            <span className="font-black text-white text-xs sm:text-sm tracking-tight whitespace-nowrap">
               VT English
             </span>
           </div>
@@ -74,30 +74,30 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Center: Context & Gamification Island */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Unified Topic & Level Pill */}
-          <div className="flex items-center bg-slate-900/90 rounded-full border border-white/10 p-0.5 shadow-sm">
+          <div className="flex items-center bg-slate-950 rounded-2xl border-2 border-slate-800 p-0.5 shadow-sm">
             {/* Topic Trigger */}
             <button
               id="nav-topic-button"
               onClick={onOpenTopicModal}
-              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold text-slate-200 hover:text-amber-300 hover:bg-white/[0.06] transition active:scale-95 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-slate-200 hover:text-amber-300 hover:bg-slate-800 transition active:translate-y-0.5 whitespace-nowrap"
               title="Cambiar escenario de conversación"
             >
-              <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+              <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="truncate max-w-[70px] sm:max-w-[140px]">
                 {currentTopicTitle}
               </span>
             </button>
 
-            <span className="w-px h-3 sm:h-3.5 bg-white/10" />
+            <span className="w-px h-3.5 bg-slate-800" />
 
             {/* Level Trigger */}
             <button
               id="nav-level-button"
               onClick={onOpenLevelModal}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white hover:bg-white/[0.06] transition active:scale-95"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-slate-300 hover:text-white hover:bg-slate-800 transition active:translate-y-0.5"
               title="Cambiar nivel CEFR"
             >
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>{currentLevel}</span>
             </button>
           </div>
@@ -105,14 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Gamification Streak & Gems Pill */}
           <button
             onClick={onOpenGamificationModal}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border border-amber-500/30 text-[11px] sm:text-xs font-extrabold shadow-sm transition active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition shrink-0"
             title={`Racha diaria: ${streakDays} días | Gemas: ${gemsCount}`}
           >
             <div className="flex items-center gap-1 text-orange-400">
-              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-orange-500 animate-pulse" />
+              <Flame className="w-3.5 h-3.5 fill-orange-500 animate-pulse" />
               <span>{streakDays}</span>
             </div>
-            <span className="w-px h-3 sm:h-3.5 bg-amber-500/20" />
+            <span className="w-px h-3.5 bg-slate-800" />
             <div className="flex items-center gap-1 text-amber-300">
               <span>💎</span>
               <span>{gemsCount}</span>
@@ -125,10 +125,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Switch to Kids Mode Button */}
           <button
             onClick={onSwitchToKidsMode}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 text-[11px] sm:text-xs font-black shadow-sm transition active:scale-95"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-300 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition"
             title="Ir a Modo Niños"
           >
-            <span>🦖</span>
+            <span>🍄</span>
             <span className="font-extrabold">Niños</span>
           </button>
 
@@ -136,10 +136,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-avatar-customizer-button"
             onClick={onOpenAvatarCustomizer}
-            className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] sm:text-xs font-bold shadow-sm transition active:scale-95"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-300 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-bold shadow-sm transition"
             title="Cambiar Tutor o Subir Foto HD"
           >
-            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Tutores</span>
           </button>
 
@@ -148,13 +148,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tools-button"
               onClick={onOpenToolsDrawer}
-              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/10 text-[11px] sm:text-xs font-semibold shadow-sm transition active:scale-95"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950 hover:bg-slate-900 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-bold shadow-sm transition"
               title="Abrir Centro de Herramientas y Modos"
             >
-              <SlidersHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Herramientas</span>
               {ambienceMode !== "off" && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               )}
             </button>
           )}

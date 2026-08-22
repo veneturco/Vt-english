@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import {
   AvatarAnimationState,
@@ -69,6 +69,12 @@ import { ResearchRoadmapModal } from "./components/ResearchRoadmapModal";
 import { RoleplayImmersionModal } from "./components/RoleplayImmersionModal";
 import { analyzeGrammar } from "./utils/grammarEngine";
 import { GrammarCorrection, RoleplayScenarioItem } from "./types";
+import { soundFx } from "./utils/soundFx";
+import { VictoryModal } from "./components/VictoryModal";
+import { DailyQuestsWidget, DailyQuest } from "./components/DailyQuestsWidget";
+import { AvatarAccuracyRing } from "./components/AvatarAccuracyRing";
+import { AvatarLevelCheckpointBorder } from "./components/AvatarLevelCheckpointBorder";
+import { PhoneticDrillModal } from "./components/PhoneticDrillModal";
 
 export default function App() {
   // State Initialization
@@ -141,8 +147,23 @@ export default function App() {
     });
   }, []);
 
-  // Navigation & Modals
-  const [activeMainTab, setActiveMainTab] = useState<MainAppTab>("chat");
+  // Navigation & Modals: Default to 'path' (Duolingo Learning Path) for clean single-task focus
+  const [activeMainTab, setActiveMainTab] = useState<MainAppTab>(() => {
+    try {
+      const saved = localStorage.getItem("vt_active_main_tab");
+      if (saved === "chat" || saved === "path" || saved === "tools") return saved as MainAppTab;
+      return "path";
+    } catch {
+      return "path";
+    }
+  });
+
+  const handleTabChange = (tab: MainAppTab) => {
+    setActiveMainTab(tab);
+    try {
+      localStorage.setItem("vt_active_main_tab", tab);
+    } catch {}
+  };
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState(false);
   const [isQuestsAndShopOpen, setIsQuestsAndShopOpen] = useState(false);
   const [liveGrammarCorrection, setLiveGrammarCorrection] = useState<GrammarCorrection | null>(null);
@@ -162,6 +183,78 @@ export default function App() {
   const [isResearchRoadmapOpen, setIsResearchRoadmapOpen] = useState(false);
   const [isRoleplayModalOpen, setIsRoleplayModalOpen] = useState(false);
   const [activeLessonNode, setActiveLessonNode] = useState<LessonNode | null>(null);
+
+  // Victory Session Modal State
+  const [victoryModalState, setVictoryModalState] = useState<{
+    isOpen: boolean;
+    xpGained: number;
+    streakCount: number;
+    accuracyScore: number;
+    wordsLearned: number;
+    topicTitle: string;
+  }>({
+    isOpen: false,
+    xpGained: 25,
+    streakCount: 1,
+    accuracyScore: 92,
+    wordsLearned: 2,
+    topicTitle: "Conversación en Inglés",
+  });
+
+  // Daily Quests State
+  const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([
+    {
+      id: "quest-speak-3",
+      title: "Practica hablar 3 frases en inglés",
+      target: 3,
+      current: 1,
+      icon: "🎙️",
+      rewardXp: 15,
+      completed: false,
+    },
+    {
+      id: "quest-vocab-2",
+      title: "Descubre 2 palabras de vocabulario",
+      target: 2,
+      current: 1,
+      icon: "📖",
+      rewardXp: 10,
+      completed: false,
+    },
+    {
+      id: "quest-pronounce-85",
+      title: "Logra pronunciación superior al 85%",
+      target: 1,
+      current: 1,
+      icon: "🎯",
+      rewardXp: 20,
+      completed: false,
+    },
+  ]);
+
+  const handleClaimQuestReward = (questId: string) => {
+    const quest = dailyQuests.find((q) => q.id === questId);
+    if (!quest || quest.completed) return;
+
+    setDailyQuests((prev) =>
+      prev.map((q) => (q.id === questId ? { ...q, completed: true } : q))
+    );
+
+    const updatedGam: UserGamificationState = {
+      ...gamification,
+      gems: gamification.gems + quest.rewardXp,
+      xpPoints: gamification.xpPoints + quest.rewardXp,
+    };
+    setGamification(updatedGam);
+    saveStoredGamification(updatedGam);
+
+    confetti({
+      particleCount: 50,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ["#10b981", "#f59e0b", "#3b82f6"],
+    });
+  };
   const [ambienceMode, setAmbienceMode] = useState<string>("off");
   const [ambienceVolume, setAmbienceVolume] = useState<number>(0.25);
   const [phoneticModalTab, setPhoneticModalTab] = useState<"articulation" | "stress" | "minimal_pairs" | "linking">("articulation");
@@ -713,15 +806,38 @@ export default function App() {
     setIsHistoryModalOpen(false);
   };
 
-  // If user is in Kids Mode, render dedicated Kids Experience View
-  if (appExperienceMode === "kids") {
-    return <KidsModeView onSwitchToAdultsMode={handleSwitchToAdultsMode} />;
-  }
-
+  // If user is in Kids Mode, render dedicated Kids Experience View with cross-fade
   return (
-    <div className="min-h-screen bg-[#0d1117] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* Top Header Navigation */}
-      <Navbar
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 relative overflow-x-hidden">
+      <AnimatePresence mode="wait">
+        {appExperienceMode === "kids" ? (
+          <motion.div
+            key="kids-view-transition"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{
+              duration: 0.25,
+              ease: "easeOut",
+            }}
+            className="w-full flex-1 flex flex-col"
+          >
+            <KidsModeView onSwitchToAdultsMode={handleSwitchToAdultsMode} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="adults-view-transition"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{
+              duration: 0.25,
+              ease: "easeOut",
+            }}
+            className="w-full flex-1 flex flex-col"
+          >
+            {/* Top Header Navigation */}
+            <Navbar
         currentLevel={cefrLevel}
         teachingMode={teachingMode}
         stats={userStats}
@@ -780,15 +896,21 @@ export default function App() {
             onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
             onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
             onSwitchToKidsMode={handleSwitchToKidsMode}
-            onStartDailyPractice={() => setActiveMainTab("chat")}
+            onStartDailyPractice={() => handleTabChange("chat")}
             streakDays={gamification.streakDays}
             gemsCount={gamification.gems}
           />
         </main>
       ) : (
-        /* Live Call & Dialogue Stage (Conversar) - Minimalist Apple/Duolingo Layout */
-        <main className="flex-1 flex flex-col items-center justify-between p-3 sm:p-5 pb-24 max-w-4xl w-full mx-auto gap-3.5 z-10">
-          {/* Central 2.5D Mascot Stage (Apple-style immersive canvas) */}
+        /* Live Call & Dialogue Stage (Conversar) - Modern Flat Gamified Layout */
+        <main className="flex-1 flex flex-col items-center justify-start p-3 sm:p-5 pb-28 max-w-2xl w-full mx-auto gap-4 z-10">
+          {/* Daily Quests Expandable Widget */}
+          <DailyQuestsWidget
+            quests={dailyQuests}
+            onClaimReward={handleClaimQuestReward}
+          />
+
+          {/* Central Mascot Stage (Flat 3D Geometric Stage) */}
           <motion.section
             id="avatar-stage"
             style={
@@ -796,66 +918,51 @@ export default function App() {
                 "--mouth-intensity": mouthIntensity,
               } as React.CSSProperties
             }
-            initial={{ opacity: 0, scale: 0.94, y: 15 }}
+            initial={{ opacity: 0, scale: 0.98, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{
-              duration: 0.6,
-              ease: [0.16, 1, 0.3, 1],
+              duration: 0.3,
+              ease: "easeOut",
             }}
-            className={`w-full flex-1 min-h-[300px] sm:min-h-[360px] max-h-[460px] flex items-center justify-center relative rounded-[32px] bg-gradient-to-b from-[#151a24]/90 via-[#0b0e14]/90 to-[#080b10] border border-white/[0.08] shadow-[0_24px_60px_-15px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)] overflow-hidden transition-all duration-300 ${
-              animationState === "speaking"
-                ? "[filter:saturate(1.2)_contrast(1.08)_drop-shadow(0_20px_25px_rgba(0,0,0,0.5))_drop-shadow(0_0_15px_rgba(139,92,246,0.4))]"
-                : "[filter:saturate(1.15)_contrast(1.05)_drop-shadow(0_20px_25px_rgba(0,0,0,0.5))]"
-            }`}
+            className="w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm overflow-hidden transition-all duration-300"
           >
-            {/* Top Floating Controls Bar */}
-            <div className="absolute top-3 left-3.5 right-3.5 flex items-center justify-between z-20 pointer-events-auto">
+            {/* Smooth Checkpoint Level-Up Progression Surrounding Border */}
+            <AvatarLevelCheckpointBorder
+              currentLevel={cefrLevel}
+              xpPoints={gamification.xpPoints}
+            />
+
+            {/* Top Floating Tutor Badge */}
+            <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
               {/* Mascot Identity Tag Pill */}
               <button
                 type="button"
                 onClick={() => setIsAvatarModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 backdrop-blur-xl border border-white/10 hover:border-amber-500/40 shadow-md transition active:scale-95 text-left"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 shadow-sm transition text-left"
                 title="Cambiar tutor o personalizar"
               >
-                <span className="text-base leading-none">{avatarConfig.characterEmoji || "🐦"}</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-100">{avatarConfig.name}</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-extrabold border border-amber-500/30">
-                    2.5D BET
-                  </span>
-                </div>
+                <span className="text-sm leading-none">{avatarConfig.characterEmoji || "🐦"}</span>
+                <span className="text-xs font-bold text-slate-100">{avatarConfig.name}</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black border border-amber-500/40">
+                  {avatarConfig.voiceAccent || "US"}
+                </span>
               </button>
 
-              {/* Quick Actions Pills */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhoneticModalTab("articulation");
-                    setIsPhoneticModalOpen(true);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 backdrop-blur-xl border border-white/10 hover:border-sky-500/40 text-sky-300 text-xs font-semibold shadow-md transition active:scale-95"
-                  title="Abrir Laboratorio Fonético 2.5D"
-                >
-                  <span>🔬</span>
-                  <span className="hidden sm:inline">Fonética</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsAvatarModalOpen(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 backdrop-blur-xl border border-white/10 hover:border-amber-500/40 text-amber-300 text-xs font-bold shadow-md transition active:scale-95"
-                  title="Cambiar tutor o personalizar"
-                >
-                  <span>✨</span>
-                  <span className="hidden sm:inline">Tutores</span>
-                </button>
-              </div>
+              {/* Quick Tutor Selector */}
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                title="Cambiar tutor"
+              >
+                <span>✨</span>
+                <span>Tutores</span>
+              </button>
             </div>
 
-            {/* Avatar 3D (Three.js para GLB) o Avatar 2.5D */}
+            {/* Avatar 3D o Avatar 2.5D */}
             {avatarConfig.customGlbUrl ? (
-              <div className="w-full h-full min-h-[380px] sm:min-h-[420px] flex items-center justify-center relative">
+              <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
                 <AvatarCanvas
                   config={avatarConfig}
                   animationState={animationState}
@@ -866,10 +973,6 @@ export default function App() {
                     setTimeout(() => setAnimationState("idle"), 1800);
                   }}
                 />
-                <div className="absolute top-4 right-4 z-10 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-emerald-500/40 text-[10px] font-black text-emerald-400 flex items-center gap-1 shadow-lg pointer-events-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  3D GLB THREE.JS
-                </div>
               </div>
             ) : (
               <Avatar2DCanvas
@@ -884,48 +987,9 @@ export default function App() {
                 onCustomizerClick={() => setIsAvatarModalOpen(true)}
               />
             )}
-
-            {/* Bottom Floating Minimalist Mascot Selector Dock (Apple Dock style) */}
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/75 backdrop-blur-xl border border-white/10 shadow-lg z-20 max-w-[95%] overflow-x-auto no-scrollbar">
-              {Object.entries(AVATAR_PRESETS)
-                .filter(([key]) => key.startsWith("bet_"))
-                .map(([key, preset]) => {
-                  const isSelected =
-                    avatarConfig.preset === key && !avatarConfig.customImageUrl;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        const updated: AvatarConfig = { ...preset };
-                        delete updated.customImageUrl;
-                        delete updated.spriteCropIndex;
-                        handleSaveAvatarConfig(updated);
-                        speakText(
-                          `Hi! I'm ${preset.name}. Let's speak English!`,
-                          updated
-                        );
-                      }}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shrink-0 transition-all duration-200 ${
-                        isSelected
-                          ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/50 scale-105"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]"
-                      }`}
-                      title={preset.name}
-                    >
-                      <span className="text-sm leading-none">
-                        {preset.characterEmoji}
-                      </span>
-                      <span className={`text-[11px] whitespace-nowrap ${isSelected ? "inline font-black" : "hidden md:inline"}`}>
-                        {preset.name.replace(" BET", "")}
-                      </span>
-                    </button>
-                  );
-                })}
-            </div>
           </motion.section>
 
-          {/* Scenario Roleplay Missions & Goals Panel */}
+          {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}
           <section className="w-full">
             <ScenarioMissionsPanel
               topicTitle={activeTopic.title}
@@ -1002,7 +1066,7 @@ export default function App() {
           )}
 
           {/* Bottom Interaction Zone */}
-          <section className="w-full sticky bottom-2 z-20">
+          <section className="w-full sticky bottom-16 sm:bottom-20 z-20">
             <InteractionBar
               quickChips={currentQuickChips}
               onSendMessage={handleSendMessage}
@@ -1022,10 +1086,13 @@ export default function App() {
       {/* Bottom Navigation Bar (Apple / Duolingo Style) */}
       <BottomNavBar
         activeTab={activeMainTab}
-        onTabChange={(tab) => setActiveMainTab(tab)}
+        onTabChange={handleTabChange}
         onOpenAvatarModal={() => setIsAvatarModalOpen(true)}
         onSwitchToKidsMode={handleSwitchToKidsMode}
       />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       <SpeedSpeakingModal
@@ -1235,9 +1302,31 @@ export default function App() {
             };
             setGamification(updatedGam);
             saveStoredGamification(updatedGam);
+
+            // Open Victory Screen
+            setVictoryModalState({
+              isOpen: true,
+              xpGained: xpEarned + 5,
+              streakCount: gamification.streakDays,
+              accuracyScore: 95,
+              wordsLearned: 3,
+              topicTitle: activeLessonNode.title,
+            });
+            setActiveLessonNode(null);
           }}
         />
       )}
+
+      {/* Session Victory Modal */}
+      <VictoryModal
+        isOpen={victoryModalState.isOpen}
+        onClose={() => setVictoryModalState((prev) => ({ ...prev, isOpen: false }))}
+        xpGained={victoryModalState.xpGained}
+        streakCount={victoryModalState.streakCount}
+        accuracyScore={victoryModalState.accuracyScore}
+        wordsLearned={victoryModalState.wordsLearned}
+        topicTitle={victoryModalState.topicTitle}
+      />
     </div>
   );
 }

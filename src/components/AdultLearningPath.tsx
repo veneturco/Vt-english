@@ -206,6 +206,8 @@ export const ADULT_UNITS: LearningUnitData[] = [
   },
 ];
 
+import { DailyGoalProgressRing } from "./DailyGoalProgressRing";
+
 export interface AdultLearningPathProps {
   currentLevel: CEFRLevel;
   streakDays: number;
@@ -293,7 +295,16 @@ export function AdultLearningPath({
       </header>
 
       {/* 2. FEED VERTICAL DE UNIDADES & TIMELINE */}
-      <main className="w-full max-w-xl mx-auto px-4 pt-6 flex flex-col gap-10">
+      <main className="w-full max-w-xl mx-auto px-4 pt-4 sm:pt-6 flex flex-col gap-8">
+        {/* COMPONENTE META DIARIA DE APRENDIZAJE (PROGRESS RING UI) */}
+        <DailyGoalProgressRing
+          currentXp={35}
+          targetXp={50}
+          streakDays={streakDays}
+          completedLessonsToday={2}
+          targetLessonsToday={3}
+        />
+
         {ADULT_UNITS.map((unit) => {
           const completedCount = unit.nodes.filter((n) => n.status === "completed").length;
           const totalCount = unit.nodes.length;

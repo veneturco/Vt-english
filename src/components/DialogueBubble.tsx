@@ -56,10 +56,10 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-2xl mx-auto p-4 sm:p-5 rounded-2xl bg-[#161b22]/90 backdrop-blur-xl border border-blue-500/30 shadow-xl shadow-blue-950/40 text-slate-200 animate-pulse">
+      <div className="w-full max-w-2xl mx-auto p-4 sm:p-5 rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm text-slate-200 animate-pulse">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" />
-          <p className="text-sm sm:text-base text-blue-300 font-medium">
+          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+          <p className="text-sm sm:text-base text-emerald-300 font-bold">
             {teacherName} está preparando tu explicación y reto pedagógico...
           </p>
         </div>
@@ -98,21 +98,21 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
       {/* Main Dialogue Card */}
       <div
         id="tutor-dialogue-card"
-        className="w-full p-4 sm:p-6 rounded-[28px] bg-[#121722]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-300"
+        className="w-full p-4 sm:p-6 rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm transition-all duration-300"
       >
         {/* Header line of Teacher */}
-        <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between pb-3 mb-3.5 border-b-2 border-slate-800">
           <div className="flex items-center gap-2">
             <span className="text-base">{avatarEmoji}</span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-amber-300">
                 {teacherName}
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-slate-300 font-semibold">
+              <span className="text-[10px] px-2 py-0.5 rounded-xl bg-slate-800 border-2 border-slate-700 text-slate-300 font-bold">
                 {teacherRole}
               </span>
               {avatarBadge && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-xl bg-amber-500/20 text-amber-300 font-black border-2 border-amber-500/40">
                   {avatarBadge}
                 </span>
               )}
@@ -120,17 +120,17 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 font-medium">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-xl bg-slate-800 text-slate-300 font-bold border-2 border-slate-700">
               Toca palabras para traducir
             </span>
           </div>
         </div>
 
-        {/* 🎯 Target English Practice Phrase (Apple / Elsa style focus card) */}
+        {/* 🎯 Target English Practice Phrase (Flat gamified card) */}
         {currentMessage.targetEnglishPhrase && (
-          <div className="mb-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/[0.07] via-slate-900/60 to-slate-950/80 border border-amber-500/25 shadow-sm">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="mb-4 p-4 rounded-2xl bg-slate-950 border-2 border-b-4 border-amber-500/50 shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>Frase Clave a Dominar:</span>
               </span>
@@ -139,7 +139,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                 {/* Play target phrase */}
                 <button
                   onClick={() => onRepeatAudio(false, currentMessage.targetEnglishPhrase, "en-US")}
-                  className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                  className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 transition shadow-sm"
                   title="Escuchar pronunciación nativa"
                 >
                   <Volume2 className="w-3.5 h-3.5 text-amber-300" />
@@ -149,7 +149,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                 {/* Slow audio 0.75x */}
                 <button
                   onClick={() => onRepeatAudio(true, currentMessage.targetEnglishPhrase, "en-US")}
-                  className="px-2.5 py-1 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-medium transition active:scale-95 border border-slate-700/60"
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 transition"
                   title="Escuchar lento (0.75x)"
                 >
                   <span>🐢 0.75x</span>
@@ -159,10 +159,10 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                 {onPracticePhrase && (
                   <button
                     onClick={() => onPracticePhrase(currentMessage.targetEnglishPhrase || "")}
-                    className="px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                    className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center gap-1 border-2 border-b-4 border-emerald-700 active:border-b-2 active:translate-y-0.5 transition shadow-sm"
                     title="Cargar esta frase para practicar hablarla tú"
                   >
-                    <Mic className="w-3 h-3" />
+                    <Mic className="w-3.5 h-3.5" />
                     <span>Practicar</span>
                   </button>
                 )}
@@ -170,13 +170,13 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
             </div>
 
             {/* Target English Phrase Text */}
-            <p className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <p className="text-base sm:text-lg font-extrabold text-white tracking-tight">
               "{currentMessage.targetEnglishPhrase}"
             </p>
 
             {/* Phonetic guide for Spanish speakers */}
             {currentMessage.phoneticGuide && (
-              <div className="mt-2.5 text-xs text-sky-200/90 font-mono bg-sky-950/30 px-3 py-1.5 rounded-xl border border-sky-500/20 flex items-center justify-between gap-1.5 flex-wrap">
+              <div className="mt-2.5 text-xs text-sky-200 font-mono bg-slate-900 px-3 py-2 rounded-xl border-2 border-sky-500/30 flex items-center justify-between gap-1.5 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-bold text-sky-400 font-sans uppercase">Fonética:</span>
                   <span>{currentMessage.phoneticGuide}</span>
@@ -184,7 +184,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                 {onOpenPhoneticLab && (
                   <button
                     onClick={() => onOpenPhoneticLab("articulation")}
-                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-sans font-bold flex items-center gap-1 transition"
+                    className="text-[10px] px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-sans font-bold border-2 border-b-2 border-sky-500/40 flex items-center gap-1 transition"
                     title="Ver rayos X de posición de lengua y boca"
                   >
                     <span>🔬 Ver Boca 2.5D</span>
@@ -195,18 +195,18 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
 
             {/* Native Linking Trick */}
             {currentMessage.nativeLinkingTrick && (
-              <div className="mt-2 text-xs text-amber-300/90 flex items-center justify-between gap-1.5 flex-wrap bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20">
+              <div className="mt-2 text-xs text-amber-200 flex items-center justify-between gap-1.5 flex-wrap bg-slate-900 px-3 py-2 rounded-xl border-2 border-amber-500/30">
                 <div className="flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>
-                    <strong>Truco nativo: </strong>
+                    <strong className="text-amber-300">Truco nativo: </strong>
                     {currentMessage.nativeLinkingTrick}
                   </span>
                 </div>
                 {onOpenPhoneticLab && (
                   <button
                     onClick={() => onOpenPhoneticLab("linking")}
-                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center gap-1 transition"
+                    className="text-[10px] px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold border-2 border-b-2 border-amber-500/40 flex items-center gap-1 transition"
                     title="Ver animación de unión de palabras"
                   >
                     <span>🌉 Linking Bridge</span>
@@ -218,12 +218,12 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
         )}
 
         {/* English Speech Text (Clickable Words) */}
-        <div className="text-base sm:text-lg leading-relaxed text-slate-100 font-medium">
+        <div className="text-base sm:text-lg leading-relaxed text-slate-100 font-bold">
           {words.map((word, index) => (
             <span
               key={index}
               onClick={(e) => handleWordClick(e, word)}
-              className="inline-block hover:text-amber-300 hover:bg-amber-500/15 px-1 py-0.5 rounded-md cursor-pointer transition-colors duration-150 active:scale-95"
+              className="inline-block hover:text-amber-300 hover:bg-slate-800 px-1 py-0.5 rounded-lg cursor-pointer transition-colors duration-150 active:scale-95"
             >
               {word}{" "}
             </span>
@@ -232,20 +232,20 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
 
         {/* Teacher Warm Commentary in Spanish/Bilingual */}
         {currentMessage.teacherCommentary && (
-          <div className="mt-3.5 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-300 leading-relaxed flex items-start gap-2.5">
+          <div className="mt-3.5 p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 text-sm text-slate-300 leading-relaxed flex items-start gap-2.5">
             <Smile className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-amber-300 text-xs block mb-0.5">
                 Guía Pedagógica:
               </span>
-              <p>{currentMessage.teacherCommentary}</p>
+              <p className="font-medium">{currentMessage.teacherCommentary}</p>
             </div>
           </div>
         )}
 
         {/* Spanish Translation (Accordion / Toggle) */}
         {showTranslation && currentMessage.spanishTranslation && (
-          <div className="mt-3.5 pt-3 border-t border-white/[0.06] text-sm sm:text-base text-slate-300 italic bg-black/20 p-3 rounded-2xl border border-white/5">
+          <div className="mt-3.5 pt-3 border-t-2 border-slate-800 text-sm sm:text-base text-slate-300 italic bg-slate-950 p-3.5 rounded-2xl border-2 border-slate-800">
             <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 not-italic mb-1">
               <Languages className="w-3.5 h-3.5" />
               <span>Traducción en Español:</span>
@@ -256,7 +256,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
 
         {/* Pedagogical Tip or Cultural Highlight */}
         {showTip && currentMessage.pedagogicalTip && (
-          <div className="mt-3 text-xs sm:text-sm text-indigo-200 bg-indigo-950/30 p-3 rounded-2xl border border-indigo-500/30 flex items-start gap-2">
+          <div className="mt-3 text-xs sm:text-sm text-indigo-200 bg-slate-950 p-3.5 rounded-2xl border-2 border-indigo-500/40 flex items-start gap-2">
             <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-indigo-300 block mb-0.5">Consejo Pedagógico:</span>
@@ -267,7 +267,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
 
         {/* Key Vocabulary Highlight Chips */}
         {currentMessage.vocabularyNotes && currentMessage.vocabularyNotes.length > 0 && (
-          <div className="mt-3.5 pt-3 border-t border-white/[0.06]">
+          <div className="mt-3.5 pt-3 border-t-2 border-slate-800">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span>Vocabulario Clave:</span>
@@ -276,7 +276,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
               {currentMessage.vocabularyNotes.map((vocab, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-white/10 text-xs text-slate-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border-2 border-slate-800 text-xs text-slate-200"
                 >
                   <span className="font-extrabold text-amber-400">{vocab.word}</span>
                   {vocab.phoneticSpanish ? (
@@ -287,10 +287,10 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                   <span className="text-slate-300">— {vocab.meaning}</span>
                   <button
                     onClick={() => onSpeakWord(vocab.word)}
-                    className="p-1 hover:text-amber-300 hover:bg-white/10 rounded-full transition ml-0.5"
+                    className="p-1 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition ml-0.5"
                     title="Escuchar pronunciación"
                   >
-                    <Volume2 className="w-3 h-3" />
+                    <Volume2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() =>
@@ -302,10 +302,10 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
                         example: vocab.example,
                       })
                     }
-                    className="p-1 hover:text-amber-300 hover:bg-white/10 rounded-full transition"
+                    className="p-1 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition"
                     title="Guardar en libreta de vocabulario"
                   >
-                    <BookmarkPlus className="w-3 h-3" />
+                    <BookmarkPlus className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))}
@@ -313,27 +313,27 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
           </div>
         )}
 
-        {/* Action Controls Bar (Sleek Apple pill bar) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-white/[0.06]">
+        {/* Action Controls Bar (Flat 3D buttons) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3.5 border-t-2 border-slate-800">
           <div className="flex items-center gap-2">
             {/* Repeat Full Audio */}
             <button
               onClick={() => onRepeatAudio(false)}
               disabled={isPlayingAudio}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold transition active:scale-95 ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold border-2 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all ${
                 isPlayingAudio
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/50"
-                  : "bg-white/10 hover:bg-white/20 text-white shadow-sm"
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                  : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700 shadow-sm"
               }`}
             >
-              <Volume2 className={`w-3.5 h-3.5 text-amber-400 ${isPlayingAudio ? "animate-bounce" : ""}`} />
+              <Volume2 className={`w-4 h-4 text-amber-400 ${isPlayingAudio ? "animate-bounce" : ""}`} />
               <span>{isPlayingAudio ? "Reproduciendo..." : "Escuchar Todo"}</span>
             </button>
 
             {/* Slow Audio 0.75x */}
             <button
               onClick={() => onRepeatAudio(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 text-xs font-medium transition active:scale-95 border border-white/10"
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 transition"
               title="Escuchar respuesta completa más lenta (0.75x)"
             >
               <span>🐢 0.75x</span>
@@ -344,13 +344,13 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
             {/* Translate Button */}
             <button
               onClick={() => setShowTranslation(!showTranslation)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition active:scale-95 border ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold border-2 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all ${
                 showTranslation
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                  : "bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-white/10"
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                  : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
               }`}
             >
-              <Languages className="w-3.5 h-3.5" />
+              <Languages className="w-4 h-4" />
               <span>{showTranslation ? "Ocultar Español" : "Ver en Español"}</span>
             </button>
 
@@ -358,14 +358,14 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
             {currentMessage.pedagogicalTip && (
               <button
                 onClick={() => setShowTip(!showTip)}
-                className={`p-2 rounded-full text-xs transition border ${
+                className={`p-2 rounded-2xl text-xs font-bold border-2 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all ${
                   showTip
-                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                    : "bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-white/10"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                    : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
                 }`}
                 title="Consejo pedagógico"
               >
-                <Lightbulb className="w-3.5 h-3.5" />
+                <Lightbulb className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -376,32 +376,50 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
       {hasCorrection && (
         <div
           id="grammar-feedback-box"
-          className="w-full p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-100 shadow-xl backdrop-blur-md animate-in slide-in-from-top-2 duration-200"
+          className="w-full p-4 sm:p-5 rounded-3xl bg-slate-900 border-2 border-b-4 border-amber-500 text-amber-100 shadow-sm"
         >
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div className="flex-1 text-xs sm:text-sm">
-              <div className="flex items-center justify-between mb-1">
-                <h4 className="font-bold text-amber-300">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-black text-amber-300">
                   Retroalimentación Pedagógica de {teacherName}:
                 </h4>
                 {correction.praise && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-xl bg-emerald-500/20 border-2 border-emerald-500/40 text-emerald-300 font-black">
                     {correction.praise}
                   </span>
                 )}
               </div>
 
               {correction.originalSentence && (
-                <div className="mb-1 text-slate-300">
-                  <span className="text-amber-400 font-semibold">Dijiste: </span>
-                  <span className="line-through text-rose-300">{correction.originalSentence}</span>
+                <div className="mb-2 text-slate-300">
+                  <span className="text-amber-400 font-bold block mb-1">Evaluación de Fonemas y Pronunciación:</span>
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-950 border-2 border-slate-800">
+                    {correction.originalSentence.split(" ").map((w, idx) => {
+                      const cleanWord = w.replace(/[.,?!]/g, "").toLowerCase();
+                      const isCorrected = correction.correctedSentence?.toLowerCase().includes(cleanWord);
+                      return (
+                        <span
+                          key={idx}
+                          className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer transition-transform active:scale-95 border ${
+                            isCorrected
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                              : "bg-rose-500/20 text-rose-300 border-rose-500/40 line-through"
+                          }`}
+                          title={isCorrected ? "Pronunciación correcta (≥85%)" : "Palabra o estructura a mejorar"}
+                        >
+                          {w}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {correction.correctedSentence && (
-                <div className="mb-2 text-emerald-300 font-medium flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <div className="mb-2 text-emerald-300 font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>
                     <strong className="text-emerald-400">Forma recomendada: </strong>
                     "{correction.correctedSentence}"
@@ -410,16 +428,16 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
               )}
 
               {correction.explanation && (
-                <p className="text-slate-200 leading-relaxed bg-black/30 p-2.5 rounded-lg border border-amber-500/20 mb-2">
+                <p className="text-slate-200 leading-relaxed bg-slate-950 p-3 rounded-2xl border-2 border-slate-800 mb-2 font-medium">
                   {correction.explanation}
                 </p>
               )}
 
               {correction.nativeAlternative && (
-                <div className="text-xs text-sky-300 bg-sky-950/30 p-2 rounded-lg border border-sky-500/20 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                <div className="text-xs text-sky-300 bg-slate-950 p-2.5 rounded-2xl border-2 border-sky-500/30 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
                   <span>
-                    <strong>Como lo diría un nativo: </strong>
+                    <strong className="text-sky-300">Como lo diría un nativo: </strong>
                     "{correction.nativeAlternative}"
                   </span>
                 </div>

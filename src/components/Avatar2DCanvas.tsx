@@ -304,95 +304,29 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       className="relative w-full h-full min-h-[380px] sm:min-h-[440px] flex items-center justify-center select-none overflow-hidden"
       style={{ perspective: "1100px" }}
     >
-      {/* 1. Pixar 3D Cinematic Studio Stage & Volumetric Lighting */}
+      {/* 1. Modern Flat Geometric Mascot Stage */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-        {/* Pixar Top-Left Key Light (Warm Amber / Golden Sun) */}
+        {/* Flat Geometric Circle Stage with Crisp Border */}
         <div
-          className="absolute -top-12 -left-12 w-96 h-96 rounded-full bg-gradient-to-br from-amber-400/25 via-orange-500/15 to-transparent blur-3xl transition-opacity duration-700"
-          style={{ opacity: isSpeaking ? 0.9 : 0.65 }}
-        />
-
-        {/* Pixar Bottom-Right Fill & Rim Light (Cool Cyan / Azure Velvet) */}
-        <div
-          className="absolute -bottom-10 -right-10 w-96 h-96 rounded-full bg-gradient-to-tl from-cyan-400/25 via-blue-600/15 to-transparent blur-3xl transition-opacity duration-700"
-          style={{ opacity: isSpeaking ? 0.9 : 0.65 }}
-        />
-
-        {/* Dynamic Pixar Volumetric Mood Aura */}
-        <div
-          className={`w-80 h-80 rounded-full blur-3xl transition-all duration-700 ${
+          className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-slate-800/80 border-4 transition-all duration-300 ${
             isSpeaking
-              ? "bg-gradient-to-tr from-amber-500/35 via-rose-500/25 to-yellow-300/30 scale-120"
+              ? "border-emerald-500 bg-emerald-500/10"
               : isSurprised
-              ? "bg-gradient-to-tr from-purple-500/40 via-fuchsia-500/30 to-pink-400/30 scale-135 animate-pulse"
+              ? "border-purple-400 bg-purple-500/10"
               : isPensive
-              ? "bg-gradient-to-tr from-sky-500/35 via-indigo-500/25 to-cyan-300/25 scale-115"
+              ? "border-sky-400 bg-sky-500/10"
               : isHappy
-              ? "bg-gradient-to-tr from-emerald-500/40 via-teal-400/30 to-amber-300/30 scale-130"
+              ? "border-amber-400 bg-amber-500/10"
               : effectiveEmotion === "listening"
-              ? "bg-gradient-to-tr from-cyan-500/35 via-blue-500/25 to-teal-300/25 scale-120"
-              : "bg-gradient-to-tr from-blue-600/20 via-indigo-600/15 to-amber-500/10 scale-105"
+              ? "border-sky-400 bg-sky-500/10"
+              : "border-slate-700 bg-slate-800/60"
           }`}
         />
 
-        {/* Pixar Studio Floating Cinema Dust Particles / Micro-Sparkles */}
-        {[
-          { x: "20%", y: "25%", size: 4, dur: 4.2, delay: 0 },
-          { x: "75%", y: "30%", size: 3, dur: 3.6, delay: 1.2 },
-          { x: "30%", y: "70%", size: 5, dur: 5.1, delay: 0.8 },
-          { x: "82%", y: "65%", size: 3.5, dur: 4.8, delay: 2.1 },
-          { x: "15%", y: "55%", size: 4.5, dur: 3.9, delay: 1.7 },
-          { x: "65%", y: "20%", size: 3, dur: 4.5, delay: 0.4 },
-        ].map((particle, idx) => (
-          <motion.div
-            key={idx}
-            className="absolute rounded-full bg-amber-300/70 shadow-[0_0_8px_rgba(251,191,36,0.9)] pointer-events-none"
-            style={{
-              left: particle.x,
-              top: particle.y,
-              width: particle.size,
-              height: particle.size,
-            }}
-            animate={{
-              y: [-12, 12, -12],
-              x: [-8, 8, -8],
-              opacity: [0.2, 0.85, 0.2],
-              scale: [0.8, 1.3, 0.8],
-            }}
-            transition={{
-              duration: particle.dur,
-              repeat: Infinity,
-              delay: particle.delay,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-
-        {/* Pixar Studio Reflective Stage Platform with Rim-Lit Edge */}
+        {/* Flat Pedestal Base */}
         <div
-          className="absolute bottom-5 w-80 h-24 rounded-[100%] bg-gradient-to-t from-[#05080e] via-[#0f172a]/95 to-slate-900/60 border-2 border-amber-500/40 shadow-[0_0_45px_rgba(245,158,11,0.35),inset_0_2px_12px_rgba(255,255,255,0.25)] transition-transform duration-300"
-          style={{ transform: "rotateX(72deg)" }}
-        >
-          {/* Specular Floor Gloss Glow */}
-          <div className="w-full h-full rounded-[100%] bg-gradient-to-b from-amber-400/20 via-transparent to-cyan-500/15" />
-
-          {/* Pulsating Stage Ring */}
-          <div
-            className={`w-full h-full rounded-[100%] border-2 border-amber-400/50 ${
-              isSpeaking
-                ? "animate-ping opacity-45 shadow-[0_0_20px_rgba(245,158,11,0.8)]"
-                : isSurprised
-                ? "border-purple-400/80 animate-ping opacity-55"
-                : isPensive
-                ? "border-sky-400/70 opacity-50"
-                : isHappy
-                ? "border-emerald-400/70 opacity-60"
-                : effectiveEmotion === "listening"
-                ? "border-cyan-400/70 opacity-50"
-                : "opacity-25"
-            }`}
-          />
-        </div>
+          className="absolute bottom-6 w-60 h-4 rounded-full bg-slate-800 border-2 border-slate-700 transition-colors"
+        />
       </div>
 
       {/* 2. Inactivity (Idle Behavior) Encouraging Badge */}
@@ -402,8 +336,8 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
             initial={{ opacity: 0, y: 15, scale: 0.8 }}
             animate={{ opacity: 1, y: -90, scale: 1 }}
             exit={{ opacity: 0, y: -110, scale: 0.9 }}
-            transition={{ duration: 0.4 }}
-            className="absolute top-16 z-30 px-3.5 py-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-amber-500/50 shadow-[0_10px_25px_rgba(0,0,0,0.6)] text-xs font-bold text-amber-300 flex items-center gap-1.5 pointer-events-none"
+            transition={{ duration: 0.3 }}
+            className="absolute top-16 z-30 px-3.5 py-1.5 rounded-2xl bg-slate-900 border-2 border-b-4 border-amber-500 text-xs font-bold text-amber-300 flex items-center gap-1.5 pointer-events-none shadow-sm"
           >
             <span>{idleNudge}</span>
           </motion.div>
@@ -414,11 +348,11 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       <AnimatePresence>
         {isSpeaking && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: [0.15, 0.6, 0.15], scale: [0.95, 1.28, 1.45] }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: [0.3, 0.8, 0.3], scale: [1, 1.15, 1.25] }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
-            className="absolute w-64 h-64 rounded-full border-2 border-amber-400/40 pointer-events-none"
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+            className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full border-2 border-emerald-400 pointer-events-none"
           />
         )}
       </AnimatePresence>
@@ -427,11 +361,11 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       <AnimatePresence>
         {(effectiveEmotion === "listening" || isPensive) && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: [0.25, 0.75, 0.25], scale: [1, 1.22, 1.4] }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: [0.3, 0.8, 0.3], scale: [1, 1.15, 1.25] }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute w-64 h-64 rounded-full border-2 border-cyan-400/50 pointer-events-none"
+            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full border-2 border-sky-400 pointer-events-none"
           />
         )}
       </AnimatePresence>
