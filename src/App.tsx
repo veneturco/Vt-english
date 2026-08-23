@@ -94,8 +94,12 @@ import { OfflineStatusIndicator } from "./components/OfflineStatusIndicator";
 import { generateOfflineTutorTurn } from "./utils/offlineSessionManager";
 
 export default function App() {
-  // State Initialization
-  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(getStoredAvatarConfig);
+  // State Initialization - Turpial BET as default active avatar
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => {
+    const defaultTurpial = AVATAR_PRESETS.bet_turpial || getStoredAvatarConfig();
+    saveAvatarConfig(defaultTurpial);
+    return defaultTurpial;
+  });
   const [cefrLevel, setCefrLevel] = useState<CEFRLevel>(getStoredLevel);
   const [teachingMode, setTeachingMode] = useState<TeachingMode>("bilingual_coach");
   const {
@@ -259,7 +263,7 @@ export default function App() {
   const stageRippleRef = useRef<AvatarStageRippleRef>(null);
   const avatarStageRef = useRef<HTMLElement>(null);
 
-  const handleAvatarStageClick = (e: React.MouseEvent<HTMLElement>) => {
+  const handleAvatarStageClick = (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => {
     // Only trigger if clicking stage / mascot area
     const stage = avatarStageRef.current || e.currentTarget;
     if (!stage) return;
@@ -267,7 +271,9 @@ export default function App() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     stageRippleRef.current?.triggerRipple(x, y);
-    soundFx.playPop();
+
+    // Play character-type specific tactile sound (boing, squeak, chirp, dino boing)
+    soundFx.playCharacterStageSound(avatarConfig.preset);
     haptics.punch();
 
     // Trigger physical 3D punch feedback
@@ -350,6 +356,8 @@ export default function App() {
     },
   ]);
 
+  const [dailyGoalAchievedTrigger, setDailyGoalAchievedTrigger] = useState<number>(0);
+
   const handleClaimQuestReward = (questId: string) => {
     const quest = dailyQuests.find((q) => q.id === questId);
     if (!quest || quest.completed) return;
@@ -366,6 +374,13 @@ export default function App() {
     setGamification(updatedGam);
     saveStoredGamification(updatedGam);
     haptics.questComplete();
+
+    // Trigger Mascot Goal Achieved Medal Scale-In Entrance and Joyful Animation
+    setDailyGoalAchievedTrigger(Date.now());
+    setAnimationState("alegre");
+    setTimeout(() => {
+      setAnimationState("idle");
+    }, 2200);
 
     confetti({
       particleCount: 50,
@@ -674,6 +689,9 @@ export default function App() {
         ...prev,
         [activeTopic.id]: updatedGoals,
       }));
+
+      // Trigger Avatar VT Medal scale-in entrance animation
+      setDailyGoalAchievedTrigger(Date.now());
 
       // Confetti effect when completing goals
       try {
@@ -1234,6 +1252,7 @@ export default function App() {
               <motion.section
                 id="avatar-stage"
                 ref={avatarStageRef}
+                onMouseDown={handleAvatarStageClick}
                 onPointerDown={handleAvatarStageClick}
                 style={
                   {
@@ -1249,7 +1268,11 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98, y: 8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 whileTap={{ scale: 0.97 }}
-                className="w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm overflow-hidden cursor-pointer select-none"
+                className={`w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 ${
+                  isPlayingAudio || animationState === "speaking"
+                    ? "border-amber-400/80 stage-speaking-pulse"
+                    : "border-slate-800"
+                }`}
               >
                 {/* Circular Ripple Effect at Pointer Coordinate */}
                 <AvatarStageRipple
@@ -1265,6 +1288,7 @@ export default function App() {
                 <AvatarLevelCheckpointBorder
                   currentLevel={cefrLevel}
                   xpPoints={gamification.xpPoints}
+                  isSpeaking={isPlayingAudio || animationState === "speaking"}
                 />
 
                 {/* Top Floating Tutor Badge */}
@@ -1315,6 +1339,7 @@ export default function App() {
                     animationState={animationState}
                     mouthIntensity={mouthIntensity}
                     isListening={isListening}
+                    dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
                     onMascotClick={() => {
                       setAnimationState("encouraging");
                       setTimeout(() => setAnimationState("idle"), 1500);

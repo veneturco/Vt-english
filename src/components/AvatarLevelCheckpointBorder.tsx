@@ -9,6 +9,7 @@ interface AvatarLevelCheckpointBorderProps {
   currentLevel: CEFRLevel;
   xpPoints: number;
   lastLevelUp?: boolean;
+  isSpeaking?: boolean;
 }
 
 // CEFR Level thresholds & progression targets
@@ -26,6 +27,7 @@ const LEVEL_PROGRESSION: Record<
 export const AvatarLevelCheckpointBorder: React.FC<AvatarLevelCheckpointBorderProps> = ({
   currentLevel,
   xpPoints,
+  isSpeaking = false,
 }) => {
   const currentConfig = LEVEL_PROGRESSION[currentLevel] || LEVEL_PROGRESSION.A1;
   const prevLevelRef = React.useRef(currentLevel);
@@ -57,8 +59,36 @@ export const AvatarLevelCheckpointBorder: React.FC<AvatarLevelCheckpointBorderPr
     <>
       {/* 1. Surrounding Checkpoint Progress Border Track */}
       <div className="absolute inset-0 rounded-3xl pointer-events-none z-10 overflow-hidden">
-        {/* Background Track Border */}
-        <div className="absolute inset-0 rounded-3xl border-2 border-slate-800/80" />
+        {/* Background Track Border with Dynamic Speaking Aura */}
+        <div
+          className={`absolute inset-0 rounded-3xl border-2 transition-all duration-500 ${
+            isSpeaking
+              ? "border-amber-400/70 shadow-[inset_0_0_18px_rgba(251,191,36,0.22)]"
+              : "border-slate-800/80"
+          }`}
+        />
+
+        {/* Soft, Dynamic Speaking Breathing Aura */}
+        {isSpeaking && (
+          <motion.div
+            className="absolute inset-0 rounded-3xl border-2 border-amber-400 pointer-events-none"
+            initial={{ opacity: 0.35, scale: 0.995 }}
+            animate={{
+              opacity: [0.35, 0.9, 0.35],
+              scale: [0.995, 1.002, 0.995],
+              boxShadow: [
+                "0 0 12px rgba(245, 158, 11, 0.25), inset 0 0 12px rgba(245, 158, 11, 0.15)",
+                "0 0 28px rgba(251, 191, 36, 0.55), inset 0 0 22px rgba(251, 191, 36, 0.3)",
+                "0 0 12px rgba(245, 158, 11, 0.25), inset 0 0 12px rgba(245, 158, 11, 0.15)",
+              ],
+            }}
+            transition={{
+              duration: 2.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        )}
 
         {/* Top Edge Progress Beam */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-slate-800">

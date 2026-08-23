@@ -70,6 +70,36 @@
   position: relative;
   --mouth-intensity: 0;
   contain: layout paint;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Soft, organic breathing border & aura pulse when tutor is actively speaking */
+@keyframes avatarStageSpeakingBorderPulse {
+  0% {
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 
+      0 0 0 1px rgba(245, 158, 11, 0.25),
+      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25)),
+      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.2));
+  }
+  50% {
+    border-color: rgba(251, 191, 36, 0.85);
+    box-shadow: 
+      0 0 0 2px rgba(251, 191, 36, 0.5),
+      0 0 24px rgba(251, 191, 36, calc(0.35 + var(--mouth-intensity, 0) * 0.35)),
+      0 0 48px rgba(245, 158, 11, calc(0.2 + var(--mouth-intensity, 0) * 0.25));
+  }
+  100% {
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 
+      0 0 0 1px rgba(245, 158, 11, 0.25),
+      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25)),
+      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.2));
+  }
+}
+
+#avatar-stage.stage-speaking-pulse {
+  animation: avatarStageSpeakingBorderPulse 2.4s ease-in-out infinite;
 }
 
 #avatar-stage::after {
@@ -314,4 +344,112 @@
 .glow-seasonal {
   box-shadow: 0 0 24px var(--season-accent-glow) !important;
 }
+
+/* Turpial Musical Notes & Avian Particle FX */
+@keyframes noteFloatLeft {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate(-14px, -18px) scale(1) rotate(-12deg);
+  }
+  70% {
+    opacity: 0.85;
+    transform: translate(-32px, -55px) scale(1.15) rotate(-24deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-48px, -90px) scale(0.8) rotate(-35deg);
+  }
+}
+
+@keyframes noteFloatRight {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate(14px, -20px) scale(1.05) rotate(14deg);
+  }
+  70% {
+    opacity: 0.85;
+    transform: translate(34px, -58px) scale(1.2) rotate(26deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(52px, -95px) scale(0.8) rotate(38deg);
+  }
+}
+
+@keyframes medalStarGlint {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3) rotate(180deg);
+    filter: drop-shadow(0 0 8px #fde047);
+  }
+}
+
+@keyframes tailFeatherTwitch {
+  0%, 80%, 100% {
+    transform: rotate(0deg);
+  }
+  85% {
+    transform: rotate(4deg);
+  }
+  90% {
+    transform: rotate(-3deg);
+  }
+  95% {
+    transform: rotate(2deg);
+  }
+}
+
+/* Medal Entrance Scale-In Celebration Animation for Daily Goal Completion */
+@keyframes medalEntranceScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0) translateY(24px) rotate(-20deg);
+    filter: drop-shadow(0 0 0 rgba(250, 204, 21, 0));
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.38) translateY(-6px) rotate(8deg);
+    filter: drop-shadow(0 0 32px rgba(250, 204, 21, 0.95)) brightness(1.3);
+  }
+  65% {
+    transform: scale(0.92) translateY(2px) rotate(-3deg);
+    filter: drop-shadow(0 0 18px rgba(250, 204, 21, 0.8)) brightness(1.15);
+  }
+  82% {
+    transform: scale(1.08) translateY(-1px) rotate(1deg);
+    filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.6)) brightness(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0deg);
+    filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.4)) brightness(1);
+  }
+}
+
+@keyframes medalAuraBurst {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
 

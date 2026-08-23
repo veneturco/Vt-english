@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { AvatarAccessory, AvatarAnimationState, AvatarConfig } from "../types";
+import { soundFx } from "../utils/soundFx";
 import { RigOverlay2D } from "./RigOverlay2D";
 import {
   SuperMarioMascot,
@@ -41,6 +42,8 @@ interface Avatar2DCanvasProps {
   onMascotClick?: () => void;
   overrideEmotion?: MascotGestureEmotion | null;
   onCustomizerClick?: () => void;
+  isDailyGoalCelebration?: boolean;
+  dailyGoalAchievedTrigger?: number;
 }
 
 export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
@@ -51,6 +54,8 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   onMascotClick,
   overrideEmotion = null,
   onCustomizerClick,
+  isDailyGoalCelebration = false,
+  dailyGoalAchievedTrigger = 0,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -61,7 +66,24 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   const [eyeSaccade, setEyeSaccade] = useState({ x: 0, y: 0 });
   const [idleNudge, setIdleNudge] = useState<string | null>(null);
   const [speechAperture, setSpeechAperture] = useState<number>(0);
+  const [isMedalGoalCelebrating, setIsMedalGoalCelebrating] = useState<boolean>(false);
+  const prevGoalTriggerRef = useRef<number>(dailyGoalAchievedTrigger);
   const lastInteractionTime = useRef<number>(Date.now());
+
+  // Listen for Daily Goal Achievement to trigger Medal Entrance Scale-In celebration
+  useEffect(() => {
+    if (
+      isDailyGoalCelebration ||
+      (dailyGoalAchievedTrigger > 0 && dailyGoalAchievedTrigger !== prevGoalTriggerRef.current)
+    ) {
+      prevGoalTriggerRef.current = dailyGoalAchievedTrigger;
+      setIsMedalGoalCelebrating(true);
+      const timer = setTimeout(() => {
+        setIsMedalGoalCelebrating(false);
+      }, 2400);
+      return () => clearTimeout(timer);
+    }
+  }, [isDailyGoalCelebration, dailyGoalAchievedTrigger]);
 
   // Map incoming AvatarAnimationState to effective gesture emotion
   const mappedAnimationEmotion: MascotGestureEmotion =
@@ -236,6 +258,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
 
   const handleMascotTap = () => {
     recordUserActivity();
+    soundFx.playCharacterStageSound(config.preset);
     const emojis = ["🔥", "✨", "💡", "🌟", "🎉", "💖", "😲"];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
     const randomGesture: MascotGestureEmotion =
@@ -458,6 +481,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
           pupilX,
           pupilY,
           isListening,
+          isGoalAchievedCelebration: isMedalGoalCelebrating || Boolean(isDailyGoalCelebration),
         })}
       </motion.div>
 
@@ -548,11 +572,101 @@ interface CharacterRenderProps {
   pupilX: number;
   pupilY: number;
   isListening: boolean;
+  isGoalAchievedCelebration?: boolean;
 }
 
 // Global SVG Unlockable Accessories Layer
-function renderAccessoryOverlay(accessory: AvatarAccessory) {
+function renderAccessoryOverlay(accessory: AvatarAccessory, isGoalAchievedCelebration = false) {
   switch (accessory) {
+    case "bet_medal":
+    case "vt_badge":
+      return (
+        <g
+          className="filter drop-shadow-[0_8px_18px_rgba(245,158,11,0.65)] origin-[140px_230px]"
+          style={{
+            animation: isGoalAchievedCelebration
+              ? "medalEntranceScaleIn 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards"
+              : undefined,
+          }}
+        >
+          {/* Goal Achieved Radiant Aura Burst */}
+          {isGoalAchievedCelebration && (
+            <g className="origin-[140px_226px] pointer-events-none">
+              <circle
+                cx="140"
+                cy="226"
+                r="26"
+                fill="none"
+                stroke="#fde047"
+                strokeWidth="3.5"
+                opacity="0.85"
+                style={{ animation: "medalAuraBurst 1.2s ease-out infinite" }}
+              />
+              <circle
+                cx="140"
+                cy="226"
+                r="36"
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                opacity="0.65"
+                style={{ animation: "medalAuraBurst 1.5s ease-out 0.25s infinite" }}
+              />
+            </g>
+          )}
+
+          {/* Blue Neck Ribbon */}
+          <path
+            d="M 106 188 Q 140 218 174 188"
+            stroke="#1d4ed8"
+            strokeWidth="8"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M 106 188 Q 140 218 174 188"
+            stroke="#fde047"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            fill="none"
+          />
+
+          {/* Golden Disc */}
+          <circle cx="140" cy="226" r="21" fill="url(#goldMedalMaster3D)" stroke="#854d0e" strokeWidth="2.5" />
+          <circle cx="140" cy="226" r="17" fill="none" stroke="#ca8a04" strokeWidth="1.8" strokeDasharray="3 2" />
+          <circle cx="140" cy="226" r="15.5" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
+
+          {/* Engraved Bold VT Monogram */}
+          <text
+            x="140"
+            y="233"
+            textAnchor="middle"
+            fill="#713f12"
+            fontSize="14"
+            fontWeight="900"
+            fontFamily="system-ui, -apple-system, sans-serif"
+            letterSpacing="1px"
+            style={{ filter: "drop-shadow(0 1px 1px rgba(255,255,255,0.7))" }}
+          >
+            VT
+          </text>
+
+          {/* Glint */}
+          <g
+            className="origin-[153px_215px]"
+            style={{ animation: "medalStarGlint 3.2s ease-in-out infinite" }}
+          >
+            <polygon
+              points="153,209 155,213 159,215 155,217 153,221 151,217 147,215 151,213"
+              fill="#ffffff"
+              stroke="#fde047"
+              strokeWidth="0.8"
+            />
+          </g>
+        </g>
+      );
+
     case "graduation_cap":
       return (
         <g className="filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]">
@@ -667,6 +781,7 @@ function renderCharacterSVG({
   pupilX,
   pupilY,
   isListening,
+  isGoalAchievedCelebration = false,
 }: CharacterRenderProps) {
   const isHappy = emotion === "alegre" || emotion === "celebrating" || emotion === "encouraging";
   const isThinking = emotion === "pensativo";
@@ -846,22 +961,66 @@ function renderCharacterSVG({
               <stop offset="70%" stopColor="#1d4ed8" />
               <stop offset="100%" stopColor="#1e3a8a" />
             </linearGradient>
+
+            {/* Musical Note Golden Glowing Gradient */}
+            <linearGradient id="musicNoteGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="50%" stopColor="#fbbf24" />
+              <stop offset="100%" stopColor="#f59e0b" />
+            </linearGradient>
+            <linearGradient id="musicNoteCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#e0f2fe" />
+              <stop offset="50%" stopColor="#38bdf8" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
           </defs>
 
           {/* 1. Ambient Ground Contact Shadow */}
           <ellipse cx="140" cy="308" rx="72" ry="14" fill="#020617" opacity="0.7" />
           <ellipse cx="140" cy="308" rx="46" ry="8" fill="#000000" opacity="0.9" />
 
+          {/* 1.5. Tail Feathers with Organic Twitch */}
+          <g
+            className="origin-[140px_250px]"
+            style={{
+              animation: "tailFeatherTwitch 4.5s ease-in-out infinite",
+            }}
+          >
+            {/* Center Tail Feather */}
+            <path
+              d="M 132 235 C 130 270 126 300 134 314 C 140 317 146 314 148 300 C 150 270 148 235 140 235 Z"
+              fill="#09090b"
+              stroke="#27272a"
+              strokeWidth="2"
+            />
+            {/* Left Tail Feather */}
+            <path
+              d="M 128 238 C 118 268 110 295 118 310 C 124 312 130 308 134 294 C 138 266 136 238 130 238 Z"
+              fill="#18181b"
+              stroke="#27272a"
+              strokeWidth="1.5"
+            />
+            {/* Right Tail Feather */}
+            <path
+              d="M 152 238 C 162 268 170 295 162 310 C 156 312 150 308 146 294 C 142 266 144 238 150 238 Z"
+              fill="#18181b"
+              stroke="#27272a"
+              strokeWidth="1.5"
+            />
+            {/* White Tail Tips */}
+            <path d="M 130 304 Q 137 315 144 304 Z" fill="#f8fafc" opacity="0.8" />
+          </g>
+
           {/* 2. Left Articulated Wing (Pixar Layered Feathers with Rim Light) */}
           <g
-            className="transition-transform duration-200 origin-[65px_175px]"
+            className="transition-transform duration-250 origin-[65px_175px]"
             style={{
               transform: isHappy
-                ? "rotate(-32deg) translateY(-10px)"
+                ? "rotate(-36deg) translateY(-14px)"
                 : isSurprised
-                ? "rotate(-42deg) translateY(-16px)"
+                ? "rotate(-46deg) translateY(-18px)"
                 : isSpeaking
-                ? `rotate(${Math.sin(Date.now() / 120) * 14}deg)`
+                ? `rotate(${Math.sin(Date.now() / 110) * 16}deg) translateY(-3px)`
                 : "rotate(0deg)",
             }}
           >
@@ -895,14 +1054,14 @@ function renderCharacterSVG({
 
           {/* 3. Right Articulated Wing */}
           <g
-            className="transition-transform duration-200 origin-[215px_175px]"
+            className="transition-transform duration-250 origin-[215px_175px]"
             style={{
               transform: isHappy
-                ? "rotate(32deg) translateY(-10px)"
+                ? "rotate(36deg) translateY(-14px)"
                 : isSurprised
-                ? "rotate(42deg) translateY(-16px)"
+                ? "rotate(46deg) translateY(-18px)"
                 : isSpeaking
-                ? `rotate(${-Math.sin(Date.now() / 120) * 14}deg)`
+                ? `rotate(${-Math.sin(Date.now() / 110) * 16}deg) translateY(-3px)`
                 : "rotate(0deg)",
             }}
           >
@@ -953,269 +1112,320 @@ function renderCharacterSVG({
           <path d="M 148 202 Q 160 210 172 200" stroke="#ea580c" strokeWidth="2" fill="none" opacity="0.45" strokeLinecap="round" />
           <path d="M 126 218 Q 140 228 154 218" stroke="#c2410c" strokeWidth="2" fill="none" opacity="0.4" strokeLinecap="round" />
 
-          {/* 5. Black Velvet Head Hood (Plush Contoured Mask) */}
-          <path
-            d="M 72 152 C 72 82 102 38 140 38 C 178 38 208 82 208 152 C 208 180 196 206 178 212 C 160 218 120 218 102 212 C 84 206 72 180 72 152 Z"
-            fill="url(#turpialObsidianFeather3D)"
-            stroke="#3f3f46"
-            strokeWidth="2"
-          />
-
-          {/* Head Top Specular Glow (Cinematic Keylight) */}
-          <ellipse cx="134" cy="65" rx="42" ry="20" fill="#71717a" opacity="0.22" />
-
-          {/* Feather Crown Tuft */}
-          <path d="M 132 40 C 136 16 144 8 149 12 C 151 20 147 32 145 40 Z" fill="#27272a" />
-          <path d="M 144 40 C 150 18 160 14 163 18 C 163 28 155 36 151 42 Z" fill="#3f3f46" />
-
-          {/* 6. Cyan/Azure Orbital Eye Patches (Vibrant Turpial Feature) */}
-          <ellipse
-            cx="105"
-            cy="118"
-            rx="23"
-            ry="27"
-            fill="url(#turpialEyeMaskMaster3D)"
-            stroke="#0284c7"
-            strokeWidth="2"
-          />
-          <ellipse
-            cx="175"
-            cy="118"
-            rx="23"
-            ry="27"
-            fill="url(#turpialEyeMaskMaster3D)"
-            stroke="#0284c7"
-            strokeWidth="2"
-          />
-
-          {/* 7. Expressive Animated Eyebrow Arcs */}
-          <g>
+          {/* 5. DYNAMIC ARTICULATED HEAD GROUP (With Inquisitive Head-Tilt Physics) */}
+          <g
+            className="transition-transform duration-300 origin-[140px_160px]"
+            style={{
+              transform: isListening
+                ? "rotate(7.5deg) translateY(-2px)"
+                : isThinking
+                ? "rotate(-8.5deg) translateY(-1px)"
+                : isSurprised
+                ? "rotate(0deg) translateY(-6px)"
+                : isHappy
+                ? "rotate(2.5deg)"
+                : "rotate(0deg)",
+            }}
+          >
+            {/* Black Velvet Head Hood (Plush Contoured Mask) */}
             <path
-              d={
-                isSurprised
-                  ? "M 88 80 Q 105 68 122 80"
-                  : isThinking
-                  ? "M 90 94 Q 105 88 120 96"
-                  : isHappy
-                  ? "M 88 88 Q 105 76 122 88"
-                  : isListening
-                  ? "M 88 92 Q 105 84 122 92"
-                  : "M 90 95 Q 105 89 120 95"
-              }
-              stroke="#fbbf24"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d={
-                isSurprised
-                  ? "M 158 80 Q 175 68 192 80"
-                  : isThinking
-                  ? "M 160 90 Q 175 80 190 84"
-                  : isHappy
-                  ? "M 158 88 Q 175 76 192 88"
-                  : isListening
-                  ? "M 158 94 Q 175 86 192 92"
-                  : "M 160 95 Q 175 89 190 95"
-              }
-              stroke="#fbbf24"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </g>
-
-          {/* 8. LEFT PIXAR EYE (Volumetric Sclera + Triple-Layer Catchlights) */}
-          {isBlinking && !isSurprised ? (
-            <path
-              d="M 92 120 Q 105 130 118 120"
-              stroke="#ffffff"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-          ) : isHappy ? (
-            <path
-              d="M 92 122 Q 105 106 118 122"
-              stroke="#ffffff"
-              strokeWidth="6"
-              strokeLinecap="round"
-              fill="none"
-            />
-          ) : (
-            <g>
-              {/* White Sclera with Ambient Occlusion */}
-              <ellipse cx="105" cy="118" rx="18" ry="21" fill="#f8fafc" />
-              <ellipse cx="105" cy="116" rx="17" ry="19" fill="#ffffff" />
-
-              {/* Large Caramel/Obsidian Pixar Iris */}
-              <circle
-                cx={105 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
-                cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
-                r={isSurprised ? 13 : 12.5}
-                fill="url(#turpialPixarIris3D)"
-              />
-
-              {/* Deep Obsidian Pupil Core */}
-              <circle
-                cx={105 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
-                cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
-                r={isSurprised ? 7.5 : 7}
-                fill="#000000"
-              />
-
-              {/* Catchlight #1: Studio Softbox Primary Reflection (Top-Left Star Highlight) */}
-              <ellipse
-                cx={101 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
-                cy={112 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
-                rx="4.8"
-                ry="4"
-                fill="#ffffff"
-              />
-
-              {/* Catchlight #2: Subtle Secondary Ambient Bounce (Bottom-Right Amber Glow) */}
-              <circle
-                cx={109 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
-                cy={123 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
-                r="2.2"
-                fill="#fde047"
-                opacity="0.85"
-              />
-
-              {/* Catchlight #3: Micro Cyan Sky Reflection Ring */}
-              <circle
-                cx={98 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.3)}
-                cy={120 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.3)}
-                r="1.2"
-                fill="#38bdf8"
-                opacity="0.75"
-              />
-            </g>
-          )}
-
-          {/* 9. RIGHT PIXAR EYE */}
-          {isBlinking && !isSurprised ? (
-            <path
-              d="M 162 120 Q 175 130 188 120"
-              stroke="#ffffff"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-          ) : isHappy ? (
-            <path
-              d="M 162 122 Q 175 106 188 122"
-              stroke="#ffffff"
-              strokeWidth="6"
-              strokeLinecap="round"
-              fill="none"
-            />
-          ) : (
-            <g>
-              <ellipse cx="175" cy="118" rx="18" ry="21" fill="#f8fafc" />
-              <ellipse cx="175" cy="116" rx="17" ry="19" fill="#ffffff" />
-
-              <circle
-                cx={175 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
-                cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
-                r={isSurprised ? 13 : 12.5}
-                fill="url(#turpialPixarIris3D)"
-              />
-
-              <circle
-                cx={175 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
-                cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
-                r={isSurprised ? 7.5 : 7}
-                fill="#000000"
-              />
-
-              <ellipse
-                cx={171 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
-                cy={112 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
-                rx="4.8"
-                ry="4"
-                fill="#ffffff"
-              />
-
-              <circle
-                cx={179 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
-                cy={123 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
-                r="2.2"
-                fill="#fde047"
-                opacity="0.85"
-              />
-
-              <circle
-                cx={168 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.3)}
-                cy={120 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.3)}
-                r="1.2"
-                fill="#38bdf8"
-                opacity="0.75"
-              />
-            </g>
-          )}
-
-          {/* 10. Cute Blush on Cheeks (Happy Emote) */}
-          {isHappy && (
-            <g>
-              <ellipse cx="84" cy="142" rx="12" ry="7" fill="#f43f5e" opacity="0.7" />
-              <ellipse cx="196" cy="142" rx="12" ry="7" fill="#f43f5e" opacity="0.7" />
-            </g>
-          )}
-
-          {/* 11. ARTICULATED 3D GLOSSY BEAK (Synchronized Phonetic Mouth Engine) */}
-          <g className="origin-[140px_138px]">
-            {/* Top Beak Shaded Volume */}
-            <path
-              d={`M 116 136 Q 140 131 164 136 Q 152 150 140 ${
-                158 + (isSpeaking || isSurprised ? beakH * 0.35 : 0)
-              } Q 128 150 116 136 Z`}
-              fill="url(#turpialBeakMaster3D)"
-              stroke="#0f172a"
+              d="M 72 152 C 72 82 102 38 140 38 C 178 38 208 82 208 152 C 208 180 196 206 178 212 C 160 218 120 218 102 212 C 84 206 72 180 72 152 Z"
+              fill="url(#turpialObsidianFeather3D)"
+              stroke="#3f3f46"
               strokeWidth="2"
             />
-            {/* Top Beak Ridge Gloss Specular */}
-            <path
-              d="M 132 135 Q 140 133 148 135 Q 143 144 140 148 Z"
-              fill="#cbd5e1"
-              opacity="0.85"
+
+            {/* Head Top Specular Glow (Cinematic Keylight) */}
+            <ellipse cx="134" cy="65" rx="42" ry="20" fill="#71717a" opacity="0.22" />
+
+            {/* Feather Crown Tuft */}
+            <path d="M 132 40 C 136 16 144 8 149 12 C 151 20 147 32 145 40 Z" fill="#27272a" />
+            <path d="M 144 40 C 150 18 160 14 163 18 C 163 28 155 36 151 42 Z" fill="#3f3f46" />
+
+            {/* 6. Cyan/Azure Orbital Eye Patches (Vibrant Turpial Feature) */}
+            <ellipse
+              cx="105"
+              cy="118"
+              rx="23"
+              ry="27"
+              fill="url(#turpialEyeMaskMaster3D)"
+              stroke="#0284c7"
+              strokeWidth="2"
+            />
+            <ellipse
+              cx="175"
+              cy="118"
+              rx="23"
+              ry="27"
+              fill="url(#turpialEyeMaskMaster3D)"
+              stroke="#0284c7"
+              strokeWidth="2"
             />
 
-            {/* Mouth Cavity Interior with Tongue & Soft Shadows */}
-            {(mouthOpenAmount > 0.12 || isSurprised || isHappy) && (
+            {/* 7. Expressive Animated Eyebrow Arcs */}
+            <g>
+              <path
+                d={
+                  isSurprised
+                    ? "M 88 80 Q 105 68 122 80"
+                    : isThinking
+                    ? "M 90 94 Q 105 88 120 96"
+                    : isHappy
+                    ? "M 88 88 Q 105 76 122 88"
+                    : isListening
+                    ? "M 88 90 Q 105 82 122 90"
+                    : "M 90 95 Q 105 89 120 95"
+                }
+                stroke="#fbbf24"
+                strokeWidth="4.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path
+                d={
+                  isSurprised
+                    ? "M 158 80 Q 175 68 192 80"
+                    : isThinking
+                    ? "M 160 90 Q 175 80 190 84"
+                    : isHappy
+                    ? "M 158 88 Q 175 76 192 88"
+                    : isListening
+                    ? "M 158 92 Q 175 84 192 90"
+                    : "M 160 95 Q 175 89 190 95"
+                }
+                stroke="#fbbf24"
+                strokeWidth="4.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </g>
+
+            {/* 8. LEFT PIXAR EYE (Volumetric Sclera + Triple-Layer Catchlights) */}
+            {isBlinking && !isSurprised ? (
+              <path
+                d="M 92 120 Q 105 130 118 120"
+                stroke="#ffffff"
+                strokeWidth="4.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+            ) : isHappy ? (
+              <path
+                d="M 92 122 Q 105 106 118 122"
+                stroke="#ffffff"
+                strokeWidth="6"
+                strokeLinecap="round"
+                fill="none"
+              />
+            ) : (
               <g>
-                <ellipse
-                  cx="140"
-                  cy={154 + beakH * 0.45}
-                  rx={isVisemeRound || isSurprised ? 14 : 18}
-                  ry={Math.max(6, beakH * 0.65)}
-                  fill="#450a0a"
+                {/* White Sclera with Ambient Occlusion */}
+                <ellipse cx="105" cy="118" rx="18" ry="21" fill="#f8fafc" />
+                <ellipse cx="105" cy="116" rx="17" ry="19" fill="#ffffff" />
+
+                {/* Large Caramel/Obsidian Pixar Iris */}
+                <circle
+                  cx={105 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
+                  cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
+                  r={isSurprised ? 13 : 12.5}
+                  fill="url(#turpialPixarIris3D)"
                 />
+
+                {/* Deep Obsidian Pupil Core */}
+                <circle
+                  cx={105 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
+                  cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
+                  r={isSurprised ? 7.5 : 7}
+                  fill="#000000"
+                />
+
+                {/* Catchlight #1: Studio Softbox Primary Reflection */}
                 <ellipse
-                  cx="140"
-                  cy={156 + beakH * 0.55}
-                  rx={isVisemeSmile ? 15 : 11}
-                  ry={Math.max(4, beakH * 0.38)}
-                  fill="#f43f5e"
+                  cx={101 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
+                  cy={112 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
+                  rx="4.8"
+                  ry="4"
+                  fill="#ffffff"
+                />
+
+                {/* Catchlight #2: Subtle Secondary Ambient Bounce */}
+                <circle
+                  cx={109 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
+                  cy={123 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
+                  r="2.2"
+                  fill="#fde047"
+                  opacity="0.85"
+                />
+
+                {/* Catchlight #3: Micro Cyan Sky Reflection Ring */}
+                <circle
+                  cx={98 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.3)}
+                  cy={120 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.3)}
+                  r="1.2"
+                  fill="#38bdf8"
+                  opacity="0.75"
                 />
               </g>
             )}
 
-            {/* Lower Beak Jaw (Articulating dynamically) */}
-            <path
-              d={`M 122 ${146 + beakH * 0.68} Q 140 ${146 + beakH * 0.78} 158 ${
-                146 + beakH * 0.68
-              } Q 150 ${166 + beakH} 140 ${168 + beakH} Q 130 ${
-                166 + beakH
-              } 122 ${146 + beakH * 0.68} Z`}
-              fill="url(#turpialBeakMaster3D)"
-              stroke="#0f172a"
-              strokeWidth="2"
-            />
+            {/* 9. RIGHT PIXAR EYE */}
+            {isBlinking && !isSurprised ? (
+              <path
+                d="M 162 120 Q 175 130 188 120"
+                stroke="#ffffff"
+                strokeWidth="4.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+            ) : isHappy ? (
+              <path
+                d="M 162 122 Q 175 106 188 122"
+                stroke="#ffffff"
+                strokeWidth="6"
+                strokeLinecap="round"
+                fill="none"
+              />
+            ) : (
+              <g>
+                <ellipse cx="175" cy="118" rx="18" ry="21" fill="#f8fafc" />
+                <ellipse cx="175" cy="116" rx="17" ry="19" fill="#ffffff" />
+
+                <circle
+                  cx={175 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
+                  cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
+                  r={isSurprised ? 13 : 12.5}
+                  fill="url(#turpialPixarIris3D)"
+                />
+
+                <circle
+                  cx={175 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX)}
+                  cy={118 + (isThinking ? -4 : isSurprised ? -1 : pupilY)}
+                  r={isSurprised ? 7.5 : 7}
+                  fill="#000000"
+                />
+
+                <ellipse
+                  cx={171 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
+                  cy={112 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
+                  rx="4.8"
+                  ry="4"
+                  fill="#ffffff"
+                />
+
+                <circle
+                  cx={179 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.4)}
+                  cy={123 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.4)}
+                  r="2.2"
+                  fill="#fde047"
+                  opacity="0.85"
+                />
+
+                <circle
+                  cx={168 + (isThinking ? 3.5 : isSurprised ? 0 : pupilX * 0.3)}
+                  cy={120 + (isThinking ? -4 : isSurprised ? -1 : pupilY * 0.3)}
+                  r="1.2"
+                  fill="#38bdf8"
+                  opacity="0.75"
+                />
+              </g>
+            )}
+
+            {/* 10. Cute Blush on Cheeks (Happy Emote) */}
+            {isHappy && (
+              <g>
+                <ellipse cx="84" cy="142" rx="12" ry="7" fill="#f43f5e" opacity="0.7" />
+                <ellipse cx="196" cy="142" rx="12" ry="7" fill="#f43f5e" opacity="0.7" />
+              </g>
+            )}
+
+            {/* 11. ARTICULATED 3D GLOSSY BEAK (Synchronized Phonetic Mouth Engine) */}
+            <g className="origin-[140px_138px]">
+              {/* Top Beak Shaded Volume */}
+              <path
+                d={`M 116 136 Q 140 131 164 136 Q 152 150 140 ${
+                  158 + (isSpeaking || isSurprised ? beakH * 0.35 : 0)
+                } Q 128 150 116 136 Z`}
+                fill="url(#turpialBeakMaster3D)"
+                stroke="#0f172a"
+                strokeWidth="2"
+              />
+              {/* Top Beak Ridge Gloss Specular */}
+              <path
+                d="M 132 135 Q 140 133 148 135 Q 143 144 140 148 Z"
+                fill="#cbd5e1"
+                opacity="0.85"
+              />
+
+              {/* Mouth Cavity Interior with Tongue & Soft Shadows */}
+              {(mouthOpenAmount > 0.12 || isSurprised || isHappy) && (
+                <g>
+                  <ellipse
+                    cx="140"
+                    cy={154 + beakH * 0.45}
+                    rx={isVisemeRound || isSurprised ? 14 : 18}
+                    ry={Math.max(6, beakH * 0.65)}
+                    fill="#450a0a"
+                  />
+                  <ellipse
+                    cx="140"
+                    cy={156 + beakH * 0.55}
+                    rx={isVisemeSmile ? 15 : 11}
+                    ry={Math.max(4, beakH * 0.38)}
+                    fill="#f43f5e"
+                  />
+                </g>
+              )}
+
+              {/* Lower Beak Jaw (Articulating dynamically) */}
+              <path
+                d={`M 122 ${146 + beakH * 0.68} Q 140 ${146 + beakH * 0.78} 158 ${
+                  146 + beakH * 0.68
+                } Q 150 ${166 + beakH} 140 ${168 + beakH} Q 130 ${
+                  166 + beakH
+                } 122 ${146 + beakH * 0.68} Z`}
+                fill="url(#turpialBeakMaster3D)"
+                stroke="#0f172a"
+                strokeWidth="2"
+              />
+            </g>
+
+            {/* 11.5. Floating Animated Musical Notes Emerging from Beak when Singing/Speaking */}
+            {(isSpeaking || isHappy) && (
+              <g className="pointer-events-none">
+                {/* Note 1 - Left Floater */}
+                <g style={{ animation: "noteFloatLeft 2s ease-out infinite" }}>
+                  <path
+                    d="M 122 135 L 122 118 Q 132 112 134 122 L 134 135 M 122 135 A 4 3 0 1 1 114 135 A 4 3 0 1 1 122 135"
+                    fill="url(#musicNoteGoldGrad)"
+                    stroke="#ca8a04"
+                    strokeWidth="1.2"
+                  />
+                </g>
+
+                {/* Note 2 - Right Floater */}
+                <g style={{ animation: "noteFloatRight 2.3s ease-out 0.6s infinite" }}>
+                  <path
+                    d="M 158 135 L 158 116 Q 166 110 172 118 L 172 135 M 158 135 A 4 3 0 1 1 150 135 A 4 3 0 1 1 158 135 M 172 135 A 4 3 0 1 1 164 135 A 4 3 0 1 1 172 135 M 158 118 L 172 118"
+                    fill="url(#musicNoteCyanGrad)"
+                    stroke="#0284c7"
+                    strokeWidth="1.2"
+                  />
+                </g>
+
+                {/* Sparkle Star 1 */}
+                <g style={{ animation: "noteFloatRight 1.8s ease-out 1.1s infinite" }}>
+                  <polygon
+                    points="140,126 142,131 147,133 142,135 140,140 138,135 133,133 138,131"
+                    fill="#fef08a"
+                    stroke="#ca8a04"
+                    strokeWidth="0.8"
+                  />
+                </g>
+              </g>
+            )}
           </g>
 
-          {/* 12. OFFICIAL BET GOLD MEDAL 3D NECKLACE (Exact Match from user reference) */}
+          {/* 12. OFFICIAL BET GOLD MEDAL 3D NECKLACE */}
           <g>
             {/* Royal Blue Neck Ribbon */}
             <path
@@ -1268,19 +1478,19 @@ function renderCharacterSVG({
               opacity="0.6"
             />
 
-            {/* Engraved Bold BET Monogram */}
+            {/* Engraved Bold VT Monogram */}
             <text
               x="140"
               y="243"
               textAnchor="middle"
               fill="#713f12"
-              fontSize="14"
+              fontSize="14.5"
               fontWeight="900"
               fontFamily="system-ui, -apple-system, sans-serif"
-              letterSpacing="0.5px"
+              letterSpacing="1px"
               style={{ filter: "drop-shadow(0 1px 1px rgba(255,255,255,0.7))" }}
             >
-              BET
+              VT
             </text>
 
             {/* Medal Specular Core Sheen */}
@@ -1289,6 +1499,19 @@ function renderCharacterSVG({
               fill="#ffffff"
               opacity="0.85"
             />
+
+            {/* Dynamic Star Glint on Medallion */}
+            <g
+              className="origin-[155px_224px]"
+              style={{ animation: "medalStarGlint 3.2s ease-in-out infinite" }}
+            >
+              <polygon
+                points="155,217 157,222 162,224 157,226 155,231 153,226 148,224 153,222"
+                fill="#ffffff"
+                stroke="#fde047"
+                strokeWidth="0.8"
+              />
+            </g>
           </g>
 
           {/* 13. Adorable Bird Feet Resting on Ground */}

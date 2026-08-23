@@ -18,6 +18,7 @@ import {
   saveStoredKidsProgress,
   kidsSFX,
 } from "../utils/kidsAudioAndStorage";
+import { soundFx } from "../utils/soundFx";
 import {
   playCoinSound,
   playJumpSound,
@@ -283,6 +284,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
   // Mascot speak
   const handleMascotClick = () => {
+    soundFx.playCharacterStageSound(currentCompanion.avatarConfig.preset);
     kidsSFX.playPopBubble();
     setMascotMood("speaking");
     setMouthIntensity(0.95);
