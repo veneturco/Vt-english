@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CEFRLevel, RoleplayScenarioItem } from "../types";
 import { playPopSound, playCoinSound } from "../utils/audioSynth";
+import { haptics } from "../utils/haptics";
 
 export interface LessonNode {
   id: string;
@@ -207,23 +208,53 @@ export const ADULT_UNITS: LearningUnitData[] = [
 ];
 
 import { DailyGoalProgressRing } from "./DailyGoalProgressRing";
+import { WeeklyLeagueWidget } from "./WeeklyLeagueWidget";
+import { LearnHub } from "./LearnHub";
 
 export interface AdultLearningPathProps {
   currentLevel: CEFRLevel;
   streakDays: number;
   gemsCount: number;
+  userXP?: number;
+  userName?: string;
   onStartLesson: (node: LessonNode) => void;
   onOpenRoleplayModal?: () => void;
   onOpenPlacementTest?: () => void;
+  onOpenLeaderboard?: () => void;
+  onOpenFlashcards?: () => void;
+  onOpenSpeedSpeaking?: () => void;
+  onOpenEchoTrainer?: () => void;
+  onOpenPhoneticCoach?: () => void;
+  onOpenAmbience?: () => void;
+  onOpenNotebook?: () => void;
+  onOpenHistory?: () => void;
+  onOpenQuestsAndShop?: () => void;
+  onOpenResearchRoadmap?: () => void;
+  onOpenSeasonalTheme?: () => void;
+  onSwitchToKidsMode?: () => void;
 }
 
 export function AdultLearningPath({
   currentLevel,
   streakDays,
   gemsCount,
+  userXP = 520,
+  userName = "Tú",
   onStartLesson,
   onOpenRoleplayModal,
   onOpenPlacementTest,
+  onOpenLeaderboard,
+  onOpenFlashcards,
+  onOpenSpeedSpeaking,
+  onOpenEchoTrainer,
+  onOpenPhoneticCoach,
+  onOpenAmbience,
+  onOpenNotebook,
+  onOpenHistory,
+  onOpenQuestsAndShop,
+  onOpenResearchRoadmap,
+  onOpenSeasonalTheme,
+  onSwitchToKidsMode,
 }: AdultLearningPathProps) {
   const [selectedNodeModal, setSelectedNodeModal] = useState<LessonNode | null>(null);
 
@@ -231,12 +262,14 @@ export function AdultLearningPath({
     if (node.status === "locked") return;
 
     playPopSound();
+    haptics.light();
     setSelectedNodeModal(node);
   };
 
   const handleConfirmStart = () => {
     if (!selectedNodeModal) return;
     playCoinSound();
+    haptics.medium();
     const target = selectedNodeModal;
     setSelectedNodeModal(null);
     onStartLesson(target);
@@ -245,9 +278,9 @@ export function AdultLearningPath({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center pb-32">
       
-      {/* 1. TOP BAR ELEGANTE & MINIMALISTA */}
+      {/* 1. TOP BAR ELEGANTE & MINIMALISTA (DUOLINGO STYLE) */}
       <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
           
           {/* Selector de Idioma Activo */}
           <div className="flex items-center gap-2.5">
@@ -264,9 +297,9 @@ export function AdultLearningPath({
             </div>
           </div>
 
-          {/* Gamification Stats: Racha y Gemas */}
-          <div className="flex items-center gap-3">
-            {/* Racha con fuego resplandeciente */}
+          {/* Gamification Stats: Racha, Gemas y Test de Nivel */}
+          <div className="flex items-center gap-2.5">
+            {/* Racha con fuego */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-900 font-extrabold text-xs shadow-xs">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500 animate-pulse" />
               <span>{streakDays}</span>
@@ -283,19 +316,19 @@ export function AdultLearningPath({
               <button
                 type="button"
                 onClick={onOpenPlacementTest}
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer"
                 title="Evaluar mi nivel CEFR"
               >
                 <Award className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Test</span>
+                <span className="hidden sm:inline">Test</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* 2. FEED VERTICAL DE UNIDADES & TIMELINE */}
-      <main className="w-full max-w-xl mx-auto px-4 pt-4 sm:pt-6 flex flex-col gap-8">
+      {/* 2. FEED VERTICAL DE APRENDIZAJE: PRIORIZANDO LA RUTA DEL DÍA */}
+      <main className="w-full max-w-xl mx-auto px-4 pt-4 sm:pt-6 flex flex-col gap-6">
         {/* COMPONENTE META DIARIA DE APRENDIZAJE (PROGRESS RING UI) */}
         <DailyGoalProgressRing
           currentXp={35}
@@ -303,6 +336,34 @@ export function AdultLearningPath({
           streakDays={streakDays}
           completedLessonsToday={2}
           targetLessonsToday={3}
+        />
+
+        {/* PROGRESSIVE DISCLOSURE: LEARN HUB COLLAPSIBLE ACCORDION */}
+        <LearnHub
+          onOpenFlashcards={onOpenFlashcards || (() => {})}
+          onOpenSpeedSpeaking={onOpenSpeedSpeaking || (() => {})}
+          onOpenEchoTrainer={onOpenEchoTrainer || (() => {})}
+          onOpenPhoneticCoach={onOpenPhoneticCoach || (() => {})}
+          onOpenAmbience={onOpenAmbience || (() => {})}
+          onOpenNotebook={onOpenNotebook || (() => {})}
+          onOpenHistory={onOpenHistory || (() => {})}
+          onOpenQuestsAndShop={onOpenQuestsAndShop || (() => {})}
+          onOpenPlacementTest={onOpenPlacementTest || (() => {})}
+          onOpenResearchRoadmap={onOpenResearchRoadmap}
+          onOpenRoleplay={onOpenRoleplayModal}
+          onOpenSeasonalTheme={onOpenSeasonalTheme}
+          onOpenLeaderboard={onOpenLeaderboard}
+          onSwitchToKidsMode={onSwitchToKidsMode}
+          streakDays={streakDays}
+          gemsCount={gemsCount}
+        />
+
+        {/* WIDGET LIGA SEMANAL COMPACTO */}
+        <WeeklyLeagueWidget
+          userXP={userXP}
+          userName={userName}
+          userStreak={streakDays}
+          onOpenFullLeaderboard={onOpenLeaderboard}
         />
 
         {ADULT_UNITS.map((unit) => {

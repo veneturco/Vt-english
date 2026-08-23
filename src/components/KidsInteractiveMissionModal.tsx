@@ -11,6 +11,7 @@ import {
   playTryAgainSoft,
 } from "../utils/audioSynth";
 import { fireSuccessConfetti } from "../utils/confettiHelper";
+import { haptics } from "../utils/haptics";
 import { KidsVictoryModal } from "./KidsVictoryModal";
 
 export interface KidsInteractiveMissionModalProps {
@@ -121,6 +122,8 @@ export const KidsInteractiveMissionModal: React.FC<KidsInteractiveMissionModalPr
 
     if (evalResult.isApproved) {
       // Otorgar recompensas en localStorage
+      playJumpSound();
+      haptics.success();
       if (!rewardClaimed) {
         addRewards(10, 3, mission.id);
         setRewardClaimed(true);
@@ -136,6 +139,7 @@ export const KidsInteractiveMissionModal: React.FC<KidsInteractiveMissionModalPr
       }, 700);
     } else {
       playTryAgainSoft();
+      haptics.error();
       speakDialogue(`Good try! Let's say ${mission.targetWord}!`);
     }
   };

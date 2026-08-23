@@ -21,6 +21,7 @@ import {
   playSuccessFanfare,
 } from "../utils/audioSynth";
 import { fireParticles } from "../utils/particleHelper";
+import { haptics } from "../utils/haptics";
 
 export interface LessonQuestion {
   id: string;
@@ -223,11 +224,13 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
       setCheckStatus("correct");
       setCorrectAnswersCount((prev) => prev + 1);
       playJumpSound();
+      haptics.success();
       // Disparar confeti visual
       fireParticles(window.innerWidth / 2, window.innerHeight * 0.75, "confetti", 40);
     } else {
       setCheckStatus("incorrect");
       playErrorSoft();
+      haptics.error();
     }
   };
 
@@ -239,6 +242,7 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
       // Finalizar lección
       setIsFinished(true);
       playSuccessFanfare();
+      haptics.lessonComplete();
       fireParticles(window.innerWidth / 2, window.innerHeight * 0.4, "stars", 60);
       if (onComplete) {
         onComplete(initialXpReward);

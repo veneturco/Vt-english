@@ -1,4 +1,5 @@
 // Web Audio API Synthesizer for gamified UI sound effects (Zero external assets needed)
+import { haptics } from "./haptics";
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
@@ -26,6 +27,7 @@ class SoundEngine {
 
   // 1. Tactile Button Click "Pop"
   public playPop() {
+    haptics.light();
     if (this.isMuted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -51,6 +53,7 @@ class SoundEngine {
 
   // 2. Duolingo-style Bright Success Chime (+XP, Correct Word)
   public playSuccess() {
+    haptics.success();
     if (this.isMuted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -79,6 +82,7 @@ class SoundEngine {
 
   // 3. Gentle Friendly Feedback Note (Correction alert)
   public playGentleAlert() {
+    haptics.warning();
     if (this.isMuted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -103,6 +107,7 @@ class SoundEngine {
 
   // 4. Quest Completed Fanfare
   public playQuestComplete() {
+    haptics.questComplete();
     if (this.isMuted) return;
     this.initCtx();
     if (!this.ctx) return;

@@ -1,6 +1,7 @@
 import React from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Gift, Sparkles, Trophy } from "lucide-react";
 import { soundFx } from "../utils/soundFx";
+import { haptics } from "../utils/haptics";
 
 export interface DailyQuest {
   id: string;
@@ -99,6 +100,7 @@ export const DailyQuestsWidget: React.FC<DailyQuestsWidgetProps> = ({
                   <button
                     onClick={() => {
                       soundFx.playSuccess();
+                      haptics.questComplete();
                       onClaimReward(quest.id);
                     }}
                     disabled={quest.completed}

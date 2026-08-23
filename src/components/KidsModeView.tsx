@@ -11,6 +11,7 @@ import {
   KidsProgress,
   KidsAgeGroup,
   KidsGameMode,
+  AppExperienceMode,
 } from "../types";
 import {
   getStoredKidsProgress,
@@ -58,9 +59,11 @@ import {
   VolumeX,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { ModeSwitcher } from "./ModeSwitcher";
 
 interface KidsModeViewProps {
   onSwitchToAdultsMode: () => void;
+  onExperienceModeChange?: (mode: AppExperienceMode) => void;
 }
 
 interface KidsCompanionOption {
@@ -229,6 +232,7 @@ const KIDS_COMPANIONS: KidsCompanionOption[] = [
 
 export const KidsModeView: React.FC<KidsModeViewProps> = ({
   onSwitchToAdultsMode,
+  onExperienceModeChange,
 }) => {
   const [kidsProgress, setKidsProgress] = useState<KidsProgress>(() =>
     getStoredKidsProgress()
@@ -686,15 +690,17 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
               <span className="text-xs">{kidsProgress.totalStars}</span>
             </div>
 
-            {/* Switch to Adults Mode Button - Ultra prominent for Mobile */}
-            <button
-              onClick={onSwitchToAdultsMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/40 border border-indigo-400/40 active:scale-95 transition cursor-pointer shrink-0"
-              title="Cambiar a Modo Adultos"
-            >
-              <span>💼</span>
-              <span className="font-bold">Adultos</span>
-            </button>
+            {/* Unified High-Visibility Mode Switcher (Adult vs Kid) */}
+            <ModeSwitcher
+              currentMode="kids"
+              onModeChange={(mode) => {
+                if (onExperienceModeChange) {
+                  onExperienceModeChange(mode);
+                } else if (mode === "adults") {
+                  onSwitchToAdultsMode();
+                }
+              }}
+            />
           </div>
         </div>
       </header>

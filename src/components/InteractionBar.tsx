@@ -25,6 +25,10 @@ interface InteractionBarProps {
   setHandsFreeMode: (val: boolean) => void;
   onOpenHistory: () => void;
   historyCount: number;
+  onOpenVoiceCall?: () => void;
+  onOpenSpeedSpeaking?: () => void;
+  onOpenCustomScenario?: () => void;
+  onOpenSkillRadar?: () => void;
 }
 
 export const InteractionBar: React.FC<InteractionBarProps> = ({
@@ -38,6 +42,10 @@ export const InteractionBar: React.FC<InteractionBarProps> = ({
   setHandsFreeMode,
   onOpenHistory,
   historyCount,
+  onOpenVoiceCall,
+  onOpenSpeedSpeaking,
+  onOpenCustomScenario,
+  onOpenSkillRadar,
 }) => {
   const [inputText, setInputText] = useState("");
   const [transcriptPreview, setTranscriptPreview] = useState("");
@@ -240,28 +248,75 @@ export const InteractionBar: React.FC<InteractionBarProps> = ({
 
         {/* Bottom subtle status & quick links bar */}
         <div className="flex items-center justify-between text-[11px] px-3 pt-0.5 text-slate-400">
-          <button
-            type="button"
-            onClick={() => setHandsFreeMode(!handsFreeMode)}
-            className={`flex items-center gap-1.5 py-1 px-2.5 rounded-xl font-bold transition-all border-2 ${
-              handsFreeMode
-                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-                : "border-transparent hover:text-slate-200"
-            }`}
-            title="El micrófono se abrirá automáticamente después de que hable el tutor"
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                handsFreeMode ? "bg-emerald-400 animate-ping" : "bg-slate-500"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHandsFreeMode(!handsFreeMode)}
+              className={`flex items-center gap-1.5 py-1 px-2.5 rounded-xl font-bold transition-all border-2 ${
+                handsFreeMode
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                  : "border-transparent hover:text-slate-200"
               }`}
-            />
-            <span>{handsFreeMode ? "Auto-Mic Activo" : "Manos Libres"}</span>
-          </button>
+              title="El micrófono se abrirá automáticamente después de que hable el tutor"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  handsFreeMode ? "bg-emerald-400 animate-ping" : "bg-slate-500"
+                }`}
+              />
+              <span>{handsFreeMode ? "Auto-Mic Activo" : "Manos Libres"}</span>
+            </button>
+
+            {onOpenVoiceCall && (
+              <button
+                type="button"
+                onClick={onOpenVoiceCall}
+                className="flex items-center gap-1 py-1 px-2.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold transition"
+                title="Modo Llamada Telefónica Completa"
+              >
+                <span>📞</span>
+                <span className="hidden xs:inline">Llamada</span>
+              </button>
+            )}
+
+            {onOpenSpeedSpeaking && (
+              <button
+                type="button"
+                onClick={onOpenSpeedSpeaking}
+                className="flex items-center gap-1 py-1 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold transition"
+                title="Speed Speaking 60s"
+              >
+                <span>⚡</span>
+                <span className="hidden sm:inline">60s</span>
+              </button>
+            )}
+
+            {onOpenCustomScenario && (
+              <button
+                type="button"
+                onClick={onOpenCustomScenario}
+                className="flex items-center gap-1 py-1 px-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 font-bold transition"
+                title="Crear Situación Personalizada con IA"
+              >
+                <span>🎭</span>
+                <span className="hidden sm:inline">Roleplay IA</span>
+              </button>
+            )}
+
+            {onOpenSkillRadar && (
+              <button
+                type="button"
+                onClick={onOpenSkillRadar}
+                className="flex items-center gap-1 py-1 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-bold transition"
+                title="Diagnóstico de Habilidades CEFR"
+              >
+                <span>📊</span>
+                <span className="hidden sm:inline">Radar</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-slate-500 font-semibold">
-              Voz Bilingüe Dual Activa
-            </span>
             <button
               onClick={onOpenHistory}
               className="flex items-center gap-1 hover:text-amber-300 transition font-bold"

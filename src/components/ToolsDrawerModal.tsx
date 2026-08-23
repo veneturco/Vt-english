@@ -27,6 +27,7 @@ interface ToolsDrawerModalProps {
   onOpenResearchRoadmap?: () => void;
   onOpenRoleplay?: () => void;
   onSwitchToKidsMode?: () => void;
+  onOpenSeasonalTheme?: () => void;
   streakDays: number;
   gemsCount: number;
   ambienceMode: string;
@@ -46,6 +47,7 @@ export const ToolsDrawerModal: React.FC<ToolsDrawerModalProps> = ({
   onOpenResearchRoadmap,
   onOpenRoleplay,
   onSwitchToKidsMode,
+  onOpenSeasonalTheme,
   streakDays,
   gemsCount,
   ambienceMode,
@@ -53,6 +55,18 @@ export const ToolsDrawerModal: React.FC<ToolsDrawerModalProps> = ({
   if (!isOpen) return null;
 
   const tools = [
+    {
+      id: "seasonal_theme",
+      title: "❄️ Temas Estacionales & Partículas",
+      desc: "Invierno Festivo, Primavera Sakura, Verano Solar u Otoño Cosecha",
+      icon: Sparkles,
+      badge: "Atmósfera",
+      gradient: "from-sky-500 via-cyan-500 to-indigo-600",
+      action: () => {
+        onClose();
+        if (onOpenSeasonalTheme) onOpenSeasonalTheme();
+      },
+    },
     {
       id: "roleplay",
       title: "💼 Simulaciones & Roleplay Real",

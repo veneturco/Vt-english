@@ -31,6 +31,8 @@ export interface ToolsHubViewProps {
   onOpenResearchRoadmap?: () => void;
   onOpenRoleplay?: () => void;
   onSwitchToKidsMode: () => void;
+  onOpenSeasonalTheme?: () => void;
+  onOpenLeaderboard?: () => void;
   onStartDailyPractice?: () => void;
   streakDays: number;
   gemsCount: number;
@@ -49,12 +51,30 @@ export function ToolsHubView({
   onOpenResearchRoadmap,
   onOpenRoleplay,
   onSwitchToKidsMode,
+  onOpenSeasonalTheme,
+  onOpenLeaderboard,
   onStartDailyPractice,
   streakDays,
   gemsCount,
 }: ToolsHubViewProps) {
   // Lista de herramientas ultra-minimalistas sin párrafos de texto (Zero-Text Rule)
   const toolItems = [
+    {
+      id: "leaderboard",
+      title: "Liga Semanal 🏆",
+      icon: Award,
+      iconColor: "text-amber-500",
+      bgColor: "bg-amber-50",
+      action: onOpenLeaderboard,
+    },
+    {
+      id: "seasonal_theme",
+      title: "Temas & Partículas ❄️",
+      icon: Sparkles,
+      iconColor: "text-sky-600",
+      bgColor: "bg-sky-50",
+      action: onOpenSeasonalTheme,
+    },
     {
       id: "roleplay",
       title: "Business Roleplay",
@@ -110,6 +130,14 @@ export function ToolsHubView({
       iconColor: "text-orange-600",
       bgColor: "bg-orange-50",
       action: onOpenQuestsAndShop,
+    },
+    {
+      id: "seasonal",
+      title: "Temas Estacionales",
+      icon: Sparkles,
+      iconColor: "text-amber-500",
+      bgColor: "bg-amber-50",
+      action: onOpenSeasonalTheme,
     },
     {
       id: "roadmap",

@@ -403,4 +403,67 @@ export interface RoleplayScenarioItem {
   contextPrompt: string;
 }
 
+export type SeasonalThemeId =
+  | "winter_holiday"
+  | "spring_bloom"
+  | "summer_glow"
+  | "autumn_harvest"
+  | "default_dark"
+  | "auto";
+
+export type SeasonalParticleType = "snow" | "sakura" | "fireflies" | "leaves" | "sparkles";
+
+export interface SeasonalThemeConfig {
+  id: SeasonalThemeId;
+  name: string;
+  nameSpanish: string;
+  seasonLabel: string;
+  icon: string;
+  holidayBadge?: string;
+  description: string;
+  dateRangeLabel?: string;
+  colors: {
+    bgRoot: string;
+    bgGradient: string;
+    auroraGlow: string;
+    cardBg: string;
+    cardBorder: string;
+    cardBorderHover: string;
+    accentText: string;
+    accentBg: string;
+    accentBorder: string;
+    accentGlow: string;
+    festiveTagBg: string;
+    primaryButton: string;
+    primaryButtonBorder: string;
+    selection: string;
+    badgeBg: string;
+    badgeBorder: string;
+    badgeText: string;
+  };
+  cssVars: {
+    primaryBtnGradient: string;
+    primaryBtnText: string;
+    primaryBtnBorder: string;
+    primaryBtnShadow: string;
+    accentColor: string;
+    accentRgb: string;
+    accentGlow: string;
+    cardBorder: string;
+    cardBg: string;
+    badgeBg: string;
+    badgeBorder: string;
+    badgeText: string;
+  };
+  particles: {
+    type: SeasonalParticleType;
+    count: number;
+    speed: number;
+    colors: string[];
+    wind: number;
+    glow: boolean;
+  };
+  decorativeHeaderIcon?: string;
+}
+
 

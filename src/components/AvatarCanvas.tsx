@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RotateCw, RotateCcw, RefreshCw, MoveHorizontal, FileCode2, Feather } from "lucide-react";
@@ -1491,11 +1492,41 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
 
   return (
     <div className="relative w-full h-full min-h-[340px] flex items-center justify-center overflow-hidden select-none group">
-      <div
-        ref={mountRef}
-        className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing touch-none"
-        title="Arrastra con el dedo o mouse para girar el personaje en 360°"
-      />
+      {/* Subtle, Organic Framer Motion Idle & Ambient Stage Animation */}
+      <motion.div
+        className="w-full h-full absolute inset-0"
+        animate={
+          animationState === "speaking"
+            ? {
+                y: [0, -3.5, 0, -2, 0],
+                rotate: [0, 0.5, -0.4, 0.2, 0],
+                scale: [1, 1.012, 0.998, 1.005, 1],
+              }
+            : isListening
+            ? {
+                y: [0, -2.2, 0, -1.2, 0],
+                rotate: [0, 0.35, -0.2, 0],
+                scale: [1, 1.008, 0.998, 1],
+              }
+            : {
+                // Subtle Randomized Idle: natural bobbing, gentle gaze shifts, and organic breathing
+                y: [0, -3.8, 0.4, -2.2, 0],
+                rotate: [0, 0.45, -0.35, 0.2, 0],
+                scale: [1, 1.006, 0.997, 1.003, 1],
+              }
+        }
+        transition={{
+          duration: animationState === "speaking" ? 2.4 : isListening ? 3.2 : 5.6,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <div
+          ref={mountRef}
+          className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
+          title="Arrastra con el dedo o mouse para girar el personaje en 360°"
+        />
+      </motion.div>
       
       {/* Badge de Estado del Tutor */}
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs text-slate-300 pointer-events-none shadow-sm">

@@ -1,5 +1,6 @@
 import React from "react";
-import { MessageSquare, Map, Grid, Sparkles, Smile } from "lucide-react";
+import { MessageSquare, Map, Grid, Sparkles } from "lucide-react";
+import { haptics } from "../utils/haptics";
 
 export type MainAppTab = "chat" | "path" | "tools";
 
@@ -26,7 +27,10 @@ export function BottomNavBar({
       <button
         type="button"
         id="nav-tab-chat"
-        onClick={() => onTabChange("chat")}
+        onClick={() => {
+          haptics.light();
+          onTabChange("chat");
+        }}
         className={`flex flex-col items-center gap-1 py-1 px-3 rounded-2xl transition-all duration-150 active:translate-y-0.5 ${
           activeTab === "chat"
             ? "text-emerald-400 font-extrabold"
@@ -50,7 +54,10 @@ export function BottomNavBar({
         <button
           type="button"
           id="nav-tab-tutors"
-          onClick={onOpenAvatarModal}
+          onClick={() => {
+            haptics.light();
+            onOpenAvatarModal();
+          }}
           className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-slate-400 hover:text-amber-400 font-semibold transition-all duration-150 active:translate-y-0.5"
         >
           <div className="p-1.5 rounded-xl border-2 border-transparent hover:bg-slate-800 hover:border-amber-500/30 text-slate-400 hover:text-amber-400 transition-all">
@@ -64,7 +71,10 @@ export function BottomNavBar({
       <button
         type="button"
         id="nav-tab-path"
-        onClick={() => onTabChange("path")}
+        onClick={() => {
+          haptics.light();
+          onTabChange("path");
+        }}
         className={`flex flex-col items-center gap-1 py-1 px-3 rounded-2xl transition-all duration-150 active:translate-y-0.5 ${
           activeTab === "path"
             ? "text-emerald-400 font-extrabold"
@@ -88,7 +98,10 @@ export function BottomNavBar({
         <button
           type="button"
           id="nav-tab-kids"
-          onClick={onSwitchToKidsMode}
+          onClick={() => {
+            haptics.light();
+            onSwitchToKidsMode();
+          }}
           className="flex flex-col items-center gap-1 py-1 px-3 rounded-2xl text-amber-300 hover:text-amber-200 font-bold transition-all duration-150 active:translate-y-0.5 group"
           title="Ir al Modo Niños (Mario, Luigi y Leo)"
         >
@@ -103,7 +116,10 @@ export function BottomNavBar({
       <button
         type="button"
         id="nav-tab-tools"
-        onClick={() => onTabChange("tools")}
+        onClick={() => {
+          haptics.light();
+          onTabChange("tools");
+        }}
         className={`flex flex-col items-center gap-1 py-1 px-3 rounded-2xl transition-all duration-150 active:translate-y-0.5 ${
           activeTab === "tools"
             ? "text-emerald-400 font-extrabold"

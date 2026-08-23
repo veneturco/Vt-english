@@ -34,7 +34,7 @@ import {
   restoreLargeAvatarAssets,
 } from "./utils/storage";
 import { TOPIC_SCENARIOS, AVATAR_PRESETS, TEACHING_MODES } from "./data/presets";
-import { speakText, stopSpeaking, voiceRecognizer } from "./utils/speech";
+import { speakText, stopSpeaking, voiceRecognizer, prewarmAudioContext } from "./utils/speech";
 import { Navbar } from "./components/Navbar";
 import { KidsModeView } from "./components/KidsModeView";
 import { Avatar2DCanvas } from "./components/Avatar2DCanvas";
@@ -45,8 +45,14 @@ import { PronunciationMeter } from "./components/PronunciationMeter";
 import { ScenarioMissionsPanel } from "./components/ScenarioMissionsPanel";
 import { WaveformEchoTrainerModal } from "./components/WaveformEchoTrainerModal";
 import { SRSFlashcardsModal } from "./components/SRSFlashcardsModal";
+import { WeeklyLeaderboardModal } from "./components/WeeklyLeaderboardModal";
+import { WeeklyProgressDashboardModal } from "./components/WeeklyProgressDashboardModal";
 import { AmbienceSelectorModal } from "./components/AmbienceSelectorModal";
 import { ToolsDrawerModal } from "./components/ToolsDrawerModal";
+import { SeasonalThemeModal } from "./components/SeasonalThemeModal";
+import { SeasonalParticlesCanvas } from "./components/effects/SeasonalParticlesCanvas";
+import { AvatarStageRipple, AvatarStageRippleRef } from "./components/effects/AvatarStageRipple";
+import { useSeasonalThemeEngine } from "./hooks/useSeasonalThemeEngine";
 import { ambienceEngine } from "./utils/ambience";
 import { importVocabularyToFlashcards, getStoredFlashcards } from "./utils/srs";
 import { SpeedSpeakingModal } from "./components/SpeedSpeakingModal";
@@ -59,6 +65,7 @@ import { VocabularyNotebookModal } from "./components/VocabularyNotebookModal";
 import { TranscriptHistory } from "./components/TranscriptHistory";
 import { PhoneticCoachModal } from "./components/PhoneticCoachModal";
 import { BottomNavBar, MainAppTab } from "./components/BottomNavBar";
+import { SwipeNavigationIndicator } from "./components/SwipeNavigationIndicator";
 import { AdultLearningPath, LessonNode } from "./components/AdultLearningPath";
 import { LessonEngineView } from "./components/LessonEngineView";
 import { ToolsHubView } from "./components/ToolsHubView";
@@ -70,37 +77,39 @@ import { RoleplayImmersionModal } from "./components/RoleplayImmersionModal";
 import { analyzeGrammar } from "./utils/grammarEngine";
 import { GrammarCorrection, RoleplayScenarioItem } from "./types";
 import { soundFx } from "./utils/soundFx";
+import { haptics } from "./utils/haptics";
 import { VictoryModal } from "./components/VictoryModal";
 import { DailyQuestsWidget, DailyQuest } from "./components/DailyQuestsWidget";
 import { AvatarAccuracyRing } from "./components/AvatarAccuracyRing";
 import { AvatarLevelCheckpointBorder } from "./components/AvatarLevelCheckpointBorder";
 import { PhoneticDrillModal } from "./components/PhoneticDrillModal";
+import { VoiceCallModal } from "./components/VoiceCallModal";
+import { CustomScenarioPromptModal } from "./components/CustomScenarioPromptModal";
+import { SpeedSpeakingChallengeModal } from "./components/SpeedSpeakingChallengeModal";
+import { SkillRadarModal } from "./components/SkillRadarModal";
+import { IdiomOfTheDayCard } from "./components/IdiomOfTheDayCard";
+import { useAppMode } from "./hooks/useAppMode";
+import { useOfflineStatus } from "./hooks/useOfflineStatus";
+import { OfflineStatusIndicator } from "./components/OfflineStatusIndicator";
+import { generateOfflineTutorTurn } from "./utils/offlineSessionManager";
 
 export default function App() {
   // State Initialization
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(getStoredAvatarConfig);
   const [cefrLevel, setCefrLevel] = useState<CEFRLevel>(getStoredLevel);
   const [teachingMode, setTeachingMode] = useState<TeachingMode>("bilingual_coach");
-  const [appExperienceMode, setAppExperienceMode] = useState<AppExperienceMode>(() => {
-    try {
-      return (localStorage.getItem("app_exp_mode") as AppExperienceMode) || "adults";
-    } catch {
-      return "adults";
-    }
-  });
+  const {
+    mode: appExperienceMode,
+    setMode: setAppExperienceMode,
+  } = useAppMode();
+  const { isOnline, lastSession, saveSession } = useOfflineStatus();
 
   const handleSwitchToKidsMode = () => {
     setAppExperienceMode("kids");
-    try {
-      localStorage.setItem("app_exp_mode", "kids");
-    } catch {}
   };
 
   const handleSwitchToAdultsMode = () => {
     setAppExperienceMode("adults");
-    try {
-      localStorage.setItem("app_exp_mode", "adults");
-    } catch {}
   };
 
   const [activeTopicId, setActiveTopicId] = useState<string>(getStoredTopic);
@@ -148,6 +157,8 @@ export default function App() {
   }, []);
 
   // Navigation & Modals: Default to 'path' (Duolingo Learning Path) for clean single-task focus
+  const MAIN_TABS: MainAppTab[] = ["chat", "path", "tools"];
+  const [tabSlideDirection, setTabSlideDirection] = useState<number>(0);
   const [activeMainTab, setActiveMainTab] = useState<MainAppTab>(() => {
     try {
       const saved = localStorage.getItem("vt_active_main_tab");
@@ -158,12 +169,57 @@ export default function App() {
     }
   });
 
-  const handleTabChange = (tab: MainAppTab) => {
-    setActiveMainTab(tab);
+  const handleTabChange = useCallback((newTab: MainAppTab) => {
+    setActiveMainTab((prevTab) => {
+      const prevIndex = MAIN_TABS.indexOf(prevTab);
+      const nextIndex = MAIN_TABS.indexOf(newTab);
+      if (nextIndex !== prevIndex) {
+        setTabSlideDirection(nextIndex > prevIndex ? 1 : -1);
+      }
+      return newTab;
+    });
     try {
-      localStorage.setItem("vt_active_main_tab", tab);
+      localStorage.setItem("vt_active_main_tab", newTab);
     } catch {}
-  };
+  }, []);
+
+  const handleSwipeNextTab = useCallback(() => {
+    const currentIndex = MAIN_TABS.indexOf(activeMainTab);
+    if (currentIndex < MAIN_TABS.length - 1) {
+      handleTabChange(MAIN_TABS[currentIndex + 1]);
+      soundFx.playPop();
+    }
+  }, [activeMainTab, handleTabChange]);
+
+  const handleSwipePrevTab = useCallback(() => {
+    const currentIndex = MAIN_TABS.indexOf(activeMainTab);
+    if (currentIndex > 0) {
+      handleTabChange(MAIN_TABS[currentIndex - 1]);
+      soundFx.playPop();
+    }
+  }, [activeMainTab, handleTabChange]);
+
+  const handleTabPanEnd = useCallback(
+    (
+      _event: MouseEvent | TouchEvent | PointerEvent,
+      info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }
+    ) => {
+      const horizontalDist = info.offset.x;
+      const verticalDist = info.offset.y;
+      const isHorizontalSwipe = Math.abs(horizontalDist) > Math.abs(verticalDist) * 1.25;
+
+      if (isHorizontalSwipe) {
+        // Swiping Left (finger moves to left): go forward/right in tabs
+        if (horizontalDist < -45 || info.velocity.x < -200) {
+          handleSwipeNextTab();
+        } else if (horizontalDist > 45 || info.velocity.x > 200) {
+          // Swiping Right (finger moves to right): go backward/left in tabs
+          handleSwipePrevTab();
+        }
+      }
+    },
+    [handleSwipeNextTab, handleSwipePrevTab]
+  );
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState(false);
   const [isQuestsAndShopOpen, setIsQuestsAndShopOpen] = useState(false);
   const [liveGrammarCorrection, setLiveGrammarCorrection] = useState<GrammarCorrection | null>(null);
@@ -182,6 +238,68 @@ export default function App() {
   const [isToolsDrawerOpen, setIsToolsDrawerOpen] = useState(false);
   const [isResearchRoadmapOpen, setIsResearchRoadmapOpen] = useState(false);
   const [isRoleplayModalOpen, setIsRoleplayModalOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isProgressDashboardOpen, setIsProgressDashboardOpen] = useState(false);
+  const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false);
+  const [isSeasonalThemeModalOpen, setIsSeasonalThemeModalOpen] = useState(false);
+
+  // Seasonal & Holiday Theme Engine (Automatic Calendar Detection + Live CSS sync)
+  const {
+    themeId: seasonalThemeId,
+    themeConfig: seasonalThemeConfig,
+    particlesEnabled,
+    particleDensity,
+    selectTheme: handleSelectSeasonalTheme,
+    toggleParticles: handleToggleParticles,
+    changeParticleDensity: handleChangeParticleDensity,
+  } = useSeasonalThemeEngine();
+
+  const [isStagePunched, setIsStagePunched] = useState(false);
+
+  const stageRippleRef = useRef<AvatarStageRippleRef>(null);
+  const avatarStageRef = useRef<HTMLElement>(null);
+
+  const handleAvatarStageClick = (e: React.MouseEvent<HTMLElement>) => {
+    // Only trigger if clicking stage / mascot area
+    const stage = avatarStageRef.current || e.currentTarget;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    stageRippleRef.current?.triggerRipple(x, y);
+    soundFx.playPop();
+    haptics.punch();
+
+    // Trigger physical 3D punch feedback
+    setIsStagePunched(true);
+    setTimeout(() => {
+      setIsStagePunched(false);
+    }, 180);
+  };
+
+  // Pre-warm AudioContext on first user interaction for zero latency
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      prewarmAudioContext();
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+    };
+    window.addEventListener("click", handleFirstInteraction, { once: true });
+    window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+    return () => {
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+    };
+  }, []);
+  const [isCustomScenarioOpen, setIsCustomScenarioOpen] = useState(false);
+  const [isSpeedChallengeOpen, setIsSpeedChallengeOpen] = useState(false);
+  const [isSkillRadarOpen, setIsSkillRadarOpen] = useState(false);
+  const [idiomOfTheDay, setIdiomOfTheDay] = useState({
+    phrase: "Piece of cake",
+    meaningSpanish: "Algo muy fácil o sencillo de hacer (pan comido).",
+    exampleEnglish: "Don't worry about the exam, it's a piece of cake!",
+    isUsed: false,
+  });
   const [activeLessonNode, setActiveLessonNode] = useState<LessonNode | null>(null);
 
   // Victory Session Modal State
@@ -247,6 +365,7 @@ export default function App() {
     };
     setGamification(updatedGam);
     saveStoredGamification(updatedGam);
+    haptics.questComplete();
 
     confetti({
       particleCount: 50,
@@ -442,7 +561,38 @@ export default function App() {
     }
   }, []);
 
-  // Send message to Express Backend with Gemini AI
+  // Continuously sync and cache active learning session for offline access
+  useEffect(() => {
+    saveSession({
+      cefrLevel,
+      topicId: activeTopicId,
+      topicTitle: activeTopic?.title,
+      teachingMode,
+      experienceMode: appExperienceMode,
+      recentMessages: messages.slice(-15),
+      lastTargetPhrase: latestTutorMessage?.targetEnglishPhrase,
+      lastPhoneticGuide: latestTutorMessage?.phoneticGuide,
+      lastPedagogicalTip: latestTutorMessage?.pedagogicalTip,
+      vocabulary,
+      stats: userStats,
+      activeLessonNodeId: activeLessonNode?.id,
+      activeLessonTitle: activeLessonNode?.title,
+    });
+  }, [
+    cefrLevel,
+    activeTopicId,
+    activeTopic?.title,
+    teachingMode,
+    appExperienceMode,
+    messages,
+    vocabulary,
+    userStats,
+    activeLessonNode,
+    latestTutorMessage,
+    saveSession,
+  ]);
+
+  // Send message to Express Backend with Gemini AI or Offline Tutor Engine
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
@@ -558,6 +708,42 @@ export default function App() {
     setIsLoading(true);
     // Tutor enters thinking state while processing student input
     setAnimationState("pensativo");
+
+    // If offline, seamlessly generate tutor turn locally without blocking
+    if (!isOnline) {
+      setTimeout(() => {
+        const offlineTutorMsg = generateOfflineTutorTurn(text.trim(), {
+          level: cefrLevel,
+          topicId: activeTopic.id,
+          teacherName: avatarConfig.name,
+        });
+
+        const finalMessages = [...updatedMessages, offlineTutorMsg];
+        setMessages(finalMessages);
+        saveStoredHistory(finalMessages);
+
+        const newStats = {
+          ...userStats,
+          messagesExchanged: userStats.messagesExchanged + 2,
+          minutesPracticed: userStats.minutesPracticed + 1,
+        };
+        setUserStats(newStats);
+        saveStoredStats(newStats);
+
+        setIsLoading(false);
+        playTutorAudio(
+          offlineTutorMsg.text,
+          false,
+          undefined,
+          "alegre",
+          {
+            teacherCommentary: offlineTutorMsg.teacherCommentary,
+            targetEnglishPhrase: offlineTutorMsg.targetEnglishPhrase,
+          }
+        );
+      }, 350);
+      return;
+    }
 
     try {
       const response = await fetch("/api/chat", {
@@ -808,7 +994,23 @@ export default function App() {
 
   // If user is in Kids Mode, render dedicated Kids Experience View with cross-fade
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 relative overflow-x-hidden">
+    <div className={`min-h-screen ${seasonalThemeConfig.colors.bgRoot} bg-gradient-to-b ${seasonalThemeConfig.colors.bgGradient} text-slate-100 flex flex-col font-sans ${seasonalThemeConfig.colors.selection} relative overflow-x-hidden transition-colors duration-500`}>
+      {/* Dynamic Seasonal Gentle Particles Layer */}
+      <SeasonalParticlesCanvas
+        themeConfig={seasonalThemeConfig}
+        enabled={particlesEnabled}
+        density={particleDensity}
+      />
+
+      {/* Seasonal Aurora & Ambient Backdrop Glow */}
+      <div
+        className={`fixed inset-0 pointer-events-none bg-gradient-to-tr ${seasonalThemeConfig.colors.auroraGlow} blur-3xl opacity-60 z-0 transition-all duration-700`}
+        aria-hidden="true"
+      />
+
+      {/* Global Offline Status & Cached Active Session Indicator */}
+      <OfflineStatusIndicator isOnline={isOnline} lastSession={lastSession} />
+
       <AnimatePresence mode="wait">
         {appExperienceMode === "kids" ? (
           <motion.div
@@ -820,9 +1022,12 @@ export default function App() {
               duration: 0.25,
               ease: "easeOut",
             }}
-            className="w-full flex-1 flex flex-col"
+            className="w-full flex-1 flex flex-col z-10"
           >
-            <KidsModeView onSwitchToAdultsMode={handleSwitchToAdultsMode} />
+            <KidsModeView
+              onSwitchToAdultsMode={handleSwitchToAdultsMode}
+              onExperienceModeChange={setAppExperienceMode}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -834,7 +1039,7 @@ export default function App() {
               duration: 0.25,
               ease: "easeOut",
             }}
-            className="w-full flex-1 flex flex-col"
+            className="w-full flex-1 flex flex-col z-10"
           >
             {/* Top Header Navigation */}
             <Navbar
@@ -854,234 +1059,384 @@ export default function App() {
         onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
         onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
         onSwitchToKidsMode={handleSwitchToKidsMode}
+        experienceMode={appExperienceMode}
+        onExperienceModeChange={setAppExperienceMode}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenProgressDashboard={() => setIsProgressDashboardOpen(true)}
+        onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
+        seasonalThemeConfig={seasonalThemeConfig}
+        onOpenSRSFlashcards={() => {
+          const currentCards = getStoredFlashcards();
+          importVocabularyToFlashcards(currentCards, vocabulary);
+          setIsFlashcardsModalOpen(true);
+        }}
+        dueCardsCount={getStoredFlashcards().length}
       />
 
-      {/* Main Tabbed Views: Conversar vs. Camino vs. Herramientas */}
-      {activeMainTab === "path" ? (
-        <main className="flex-1 w-full mx-auto z-10">
-          <AdultLearningPath
-            currentLevel={cefrLevel}
-            streakDays={gamification.streakDays}
-            gemsCount={gamification.gems}
-            onStartLesson={(node) => {
-              if (node.type === "boss_roleplay") {
-                setIsRoleplayModalOpen(true);
-              } else {
-                setActiveLessonNode(node);
-              }
-            }}
-            onOpenRoleplayModal={() => setIsRoleplayModalOpen(true)}
-            onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
-          />
-        </main>
-      ) : activeMainTab === "tools" ? (
-        <main className="flex-1 w-full mx-auto z-10">
-          <ToolsHubView
-            onOpenFlashcards={() => {
-              const currentCards = getStoredFlashcards();
-              importVocabularyToFlashcards(currentCards, vocabulary);
-              setIsFlashcardsModalOpen(true);
-            }}
-            onOpenSpeedSpeaking={() => setIsSpeedSpeakingModalOpen(true)}
-            onOpenEchoTrainer={() => setIsEchoTrainerModalOpen(true)}
-            onOpenPhoneticCoach={() => {
-              setPhoneticModalTab("articulation");
-              setIsPhoneticModalOpen(true);
-            }}
-            onOpenAmbience={() => setIsAmbienceModalOpen(true)}
-            onOpenNotebook={() => setIsNotebookModalOpen(true)}
-            onOpenHistory={() => setIsHistoryModalOpen(true)}
-            onOpenQuestsAndShop={() => setIsQuestsAndShopOpen(true)}
-            onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
-            onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
-            onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
-            onSwitchToKidsMode={handleSwitchToKidsMode}
-            onStartDailyPractice={() => handleTabChange("chat")}
-            streakDays={gamification.streakDays}
-            gemsCount={gamification.gems}
-          />
-        </main>
-      ) : (
-        /* Live Call & Dialogue Stage (Conversar) - Modern Flat Gamified Layout */
-        <main className="flex-1 flex flex-col items-center justify-start p-3 sm:p-5 pb-28 max-w-2xl w-full mx-auto gap-4 z-10">
-          {/* Daily Quests Expandable Widget */}
-          <DailyQuestsWidget
-            quests={dailyQuests}
-            onClaimReward={handleClaimQuestReward}
-          />
+      {/* Top Segmented Tab Swipe Indicator with Gesture Breadcrumbs */}
+      <SwipeNavigationIndicator
+        activeTab={activeMainTab}
+        onSelectTab={handleTabChange}
+      />
 
-          {/* Central Mascot Stage (Flat 3D Geometric Stage) */}
-          <motion.section
-            id="avatar-stage"
-            style={
-              {
-                "--mouth-intensity": mouthIntensity,
-              } as React.CSSProperties
-            }
-            initial={{ opacity: 0, scale: 0.98, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{
-              duration: 0.3,
-              ease: "easeOut",
-            }}
-            className="w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm overflow-hidden transition-all duration-300"
-          >
-            {/* Smooth Checkpoint Level-Up Progression Surrounding Border */}
-            <AvatarLevelCheckpointBorder
-              currentLevel={cefrLevel}
-              xpPoints={gamification.xpPoints}
-            />
+      {/* Main Tabbed Views with Mobile Native Swipe Gesture Navigation */}
+      <div
+        id="main-tab-swipe-viewport"
+        className="w-full flex-1 flex flex-col relative overflow-hidden"
+      >
+        <AnimatePresence mode="wait" custom={tabSlideDirection}>
+          {activeMainTab === "path" ? (
+            <motion.main
+              key="main-view-path"
+              custom={tabSlideDirection}
+              variants={{
+                enter: (dir: number) => ({
+                  x: dir > 0 ? 40 : dir < 0 ? -40 : 0,
+                  opacity: 0,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                },
+                exit: (dir: number) => ({
+                  x: dir > 0 ? -40 : dir < 0 ? 40 : 0,
+                  opacity: 0,
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+              onPanEnd={handleTabPanEnd}
+              className="flex-1 w-full mx-auto z-10 touch-pan-y"
+            >
+              <AdultLearningPath
+                currentLevel={cefrLevel}
+                streakDays={gamification.streakDays}
+                gemsCount={gamification.gems}
+                userXP={gamification.xpPoints}
+                userName={avatarConfig.name === "Sarah" ? "Estudiante" : "Tú"}
+                onStartLesson={(node) => {
+                  if (node.type === "boss_roleplay") {
+                    setIsRoleplayModalOpen(true);
+                  } else {
+                    setActiveLessonNode(node);
+                  }
+                }}
+                onOpenRoleplayModal={() => setIsRoleplayModalOpen(true)}
+                onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
+                onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+                onOpenFlashcards={() => {
+                  const currentCards = getStoredFlashcards();
+                  importVocabularyToFlashcards(currentCards, vocabulary);
+                  setIsFlashcardsModalOpen(true);
+                }}
+                onOpenSpeedSpeaking={() => setIsSpeedSpeakingModalOpen(true)}
+                onOpenEchoTrainer={() => setIsEchoTrainerModalOpen(true)}
+                onOpenPhoneticCoach={() => {
+                  setPhoneticModalTab("articulation");
+                  setIsPhoneticModalOpen(true);
+                }}
+                onOpenAmbience={() => setIsAmbienceModalOpen(true)}
+                onOpenNotebook={() => setIsNotebookModalOpen(true)}
+                onOpenHistory={() => setIsHistoryModalOpen(true)}
+                onOpenQuestsAndShop={() => setIsQuestsAndShopOpen(true)}
+                onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
+                onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
+                onSwitchToKidsMode={handleSwitchToKidsMode}
+              />
+            </motion.main>
+          ) : activeMainTab === "tools" ? (
+            <motion.main
+              key="main-view-tools"
+              custom={tabSlideDirection}
+              variants={{
+                enter: (dir: number) => ({
+                  x: dir > 0 ? 40 : dir < 0 ? -40 : 0,
+                  opacity: 0,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                },
+                exit: (dir: number) => ({
+                  x: dir > 0 ? -40 : dir < 0 ? 40 : 0,
+                  opacity: 0,
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+              onPanEnd={handleTabPanEnd}
+              className="flex-1 w-full mx-auto z-10 touch-pan-y"
+            >
+              <ToolsHubView
+                onOpenFlashcards={() => {
+                  const currentCards = getStoredFlashcards();
+                  importVocabularyToFlashcards(currentCards, vocabulary);
+                  setIsFlashcardsModalOpen(true);
+                }}
+                onOpenSpeedSpeaking={() => setIsSpeedSpeakingModalOpen(true)}
+                onOpenEchoTrainer={() => setIsEchoTrainerModalOpen(true)}
+                onOpenPhoneticCoach={() => {
+                  setPhoneticModalTab("articulation");
+                  setIsPhoneticModalOpen(true);
+                }}
+                onOpenAmbience={() => setIsAmbienceModalOpen(true)}
+                onOpenNotebook={() => setIsNotebookModalOpen(true)}
+                onOpenHistory={() => setIsHistoryModalOpen(true)}
+                onOpenQuestsAndShop={() => setIsQuestsAndShopOpen(true)}
+                onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
+                onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
+                onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
+                onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
+                onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+                onSwitchToKidsMode={handleSwitchToKidsMode}
+                onStartDailyPractice={() => handleTabChange("chat")}
+                streakDays={gamification.streakDays}
+                gemsCount={gamification.gems}
+              />
+            </motion.main>
+          ) : (
+            /* Live Call & Dialogue Stage (Conversar) - Modern Flat Gamified Layout */
+            <motion.main
+              key="main-view-chat"
+              custom={tabSlideDirection}
+              variants={{
+                enter: (dir: number) => ({
+                  x: dir > 0 ? 40 : dir < 0 ? -40 : 0,
+                  opacity: 0,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                },
+                exit: (dir: number) => ({
+                  x: dir > 0 ? -40 : dir < 0 ? 40 : 0,
+                  opacity: 0,
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+              onPanEnd={handleTabPanEnd}
+              className="flex-1 flex flex-col items-center justify-start p-3 sm:p-5 pb-28 max-w-2xl w-full mx-auto gap-4 z-10 touch-pan-y"
+            >
+              {/* Daily Quests Expandable Widget */}
+              <DailyQuestsWidget
+                quests={dailyQuests}
+                onClaimReward={handleClaimQuestReward}
+              />
 
-            {/* Top Floating Tutor Badge */}
-            <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
-              {/* Mascot Identity Tag Pill */}
-              <button
-                type="button"
-                onClick={() => setIsAvatarModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 shadow-sm transition text-left"
-                title="Cambiar tutor o personalizar"
+              {/* Central Mascot Stage (Flat 3D Geometric Stage) */}
+              <motion.section
+                id="avatar-stage"
+                ref={avatarStageRef}
+                onPointerDown={handleAvatarStageClick}
+                style={
+                  {
+                    "--mouth-intensity": mouthIntensity,
+                    transform: isStagePunched
+                      ? "perspective(1000px) rotateX(10deg) rotateY(10deg) scale(0.97)"
+                      : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                    willChange: "transform",
+                  } as React.CSSProperties
+                }
+                initial={{ opacity: 0, scale: 0.98, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                whileTap={{ scale: 0.97 }}
+                className="w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm overflow-hidden cursor-pointer select-none"
               >
-                <span className="text-sm leading-none">{avatarConfig.characterEmoji || "🐦"}</span>
-                <span className="text-xs font-bold text-slate-100">{avatarConfig.name}</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black border border-amber-500/40">
-                  {avatarConfig.voiceAccent || "US"}
-                </span>
-              </button>
+                {/* Circular Ripple Effect at Pointer Coordinate */}
+                <AvatarStageRipple
+                  ref={stageRippleRef}
+                  seasonalThemeConfig={seasonalThemeConfig}
+                />
 
-              {/* Quick Tutor Selector */}
-              <button
-                type="button"
-                onClick={() => setIsAvatarModalOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
-                title="Cambiar tutor"
-              >
-                <span>✨</span>
-                <span>Tutores</span>
-              </button>
-            </div>
+                {/* Periodic Subtle Light Glint & Glass Sheen on Idle Stage */}
+                <div className="avatar-stage-sheen" aria-hidden="true" />
+                <div className="avatar-stage-corner-glint" aria-hidden="true" />
 
-            {/* Avatar 3D o Avatar 2.5D */}
-            {avatarConfig.customGlbUrl ? (
-              <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
-                <AvatarCanvas
-                  config={avatarConfig}
-                  animationState={animationState}
-                  mouthIntensity={mouthIntensity}
-                  isListening={isListening}
-                  onMascotClick={() => {
-                    setAnimationState("encouraging");
-                    setTimeout(() => setAnimationState("idle"), 1800);
+                {/* Smooth Checkpoint Level-Up Progression Surrounding Border */}
+                <AvatarLevelCheckpointBorder
+                  currentLevel={cefrLevel}
+                  xpPoints={gamification.xpPoints}
+                />
+
+                {/* Top Floating Tutor Badge */}
+                <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
+                  {/* Mascot Identity Tag Pill */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 shadow-sm transition text-left"
+                    title="Cambiar tutor o personalizar"
+                  >
+                    <span className="text-sm leading-none">{avatarConfig.characterEmoji || "🐦"}</span>
+                    <span className="text-xs font-bold text-slate-100">{avatarConfig.name}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black border border-amber-500/40">
+                      {avatarConfig.voiceAccent || "US"}
+                    </span>
+                  </button>
+
+                  {/* Quick Tutor Selector */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                    title="Cambiar tutor"
+                  >
+                    <span>✨</span>
+                    <span>Tutores</span>
+                  </button>
+                </div>
+
+                {/* Avatar 3D o Avatar 2.5D */}
+                {avatarConfig.customGlbUrl ? (
+                  <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
+                    <AvatarCanvas
+                      config={avatarConfig}
+                      animationState={animationState}
+                      mouthIntensity={mouthIntensity}
+                      isListening={isListening}
+                      onMascotClick={() => {
+                        setAnimationState("encouraging");
+                        setTimeout(() => setAnimationState("idle"), 1800);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Avatar2DCanvas
+                    config={avatarConfig}
+                    animationState={animationState}
+                    mouthIntensity={mouthIntensity}
+                    isListening={isListening}
+                    onMascotClick={() => {
+                      setAnimationState("encouraging");
+                      setTimeout(() => setAnimationState("idle"), 1500);
+                    }}
+                    onCustomizerClick={() => setIsAvatarModalOpen(true)}
+                  />
+                )}
+              </motion.section>
+
+              {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}
+              <section className="w-full">
+                <ScenarioMissionsPanel
+                  topicTitle={activeTopic.title}
+                  category={activeTopic.category}
+                  goals={scenarioGoals[activeTopic.id] || []}
+                />
+              </section>
+
+              {/* AI Dialogue Bubble */}
+              <section className="w-full">
+                <DialogueBubble
+                  currentMessage={latestTutorMessage}
+                  isPlayingAudio={isPlayingAudio}
+                  onRepeatAudio={(slow, customText, forceLang) => {
+                    const textToSpeak = customText || latestTutorMessage?.text;
+                    if (textToSpeak) {
+                      const emotion = latestTutorMessage
+                        ? determineTutorEmotion(latestTutorMessage)
+                        : "speaking";
+                      playTutorAudio(
+                        textToSpeak,
+                        slow,
+                        forceLang,
+                        emotion,
+                        !customText && latestTutorMessage
+                          ? {
+                              teacherCommentary: latestTutorMessage.teacherCommentary,
+                              targetEnglishPhrase: latestTutorMessage.targetEnglishPhrase,
+                            }
+                          : undefined
+                      );
+                    }
+                  }}
+                  onSaveVocabulary={handleSaveVocabulary}
+                  onSpeakWord={handleSpeakWord}
+                  onPracticePhrase={handlePracticePhrase}
+                  onOpenPhoneticLab={(tab) => {
+                    setPhoneticModalTab(tab || "articulation");
+                    setIsPhoneticModalOpen(true);
+                  }}
+                  teacherName={avatarConfig.name}
+                  teacherRole={avatarConfig.role}
+                  avatarEmoji={avatarConfig.characterEmoji}
+                  avatarBadge={avatarConfig.badgeText}
+                  isLoading={isLoading}
+                />
+              </section>
+
+              {/* Idiom of the Day Card */}
+              <section className="w-full">
+                <IdiomOfTheDayCard
+                  phrase={idiomOfTheDay.phrase}
+                  meaningSpanish={idiomOfTheDay.meaningSpanish}
+                  exampleEnglish={idiomOfTheDay.exampleEnglish}
+                  isUsedInSession={idiomOfTheDay.isUsed}
+                  onPracticeIdiom={(phrase) => {
+                    handleSendMessage(`Can we practice using the phrase "${phrase}"?`);
+                    setIdiomOfTheDay((prev) => ({ ...prev, isUsed: true }));
                   }}
                 />
-              </div>
-            ) : (
-              <Avatar2DCanvas
-                config={avatarConfig}
-                animationState={animationState}
-                mouthIntensity={mouthIntensity}
-                isListening={isListening}
-                onMascotClick={() => {
-                  setAnimationState("encouraging");
-                  setTimeout(() => setAnimationState("idle"), 1500);
-                }}
-                onCustomizerClick={() => setIsAvatarModalOpen(true)}
-              />
-            )}
-          </motion.section>
+              </section>
 
-          {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}
-          <section className="w-full">
-            <ScenarioMissionsPanel
-              topicTitle={activeTopic.title}
-              category={activeTopic.category}
-              goals={scenarioGoals[activeTopic.id] || []}
-            />
-          </section>
+              {/* Pronunciation Meter */}
+              {wordAccuracies.length > 0 && (
+                <section className="w-full">
+                  <PronunciationMeter
+                    userTranscript={lastSpokenText}
+                    targetPhrase={targetPhraseToEvaluate}
+                    wordAccuracies={wordAccuracies}
+                    overallScore={overallPronunciationScore}
+                    avatarVoiceAccent={avatarConfig.voiceAccent}
+                    avatarVoiceGender={avatarConfig.voiceGender}
+                    onOpenEchoTrainer={() => setIsEchoTrainerModalOpen(true)}
+                    onDismiss={() => setWordAccuracies([])}
+                  />
+                </section>
+              )}
 
-          {/* AI Dialogue Bubble */}
-          <section className="w-full">
-            <DialogueBubble
-              currentMessage={latestTutorMessage}
-              isPlayingAudio={isPlayingAudio}
-              onRepeatAudio={(slow, customText, forceLang) => {
-                const textToSpeak = customText || latestTutorMessage?.text;
-                if (textToSpeak) {
-                  const emotion = latestTutorMessage
-                    ? determineTutorEmotion(latestTutorMessage)
-                    : "speaking";
-                  playTutorAudio(
-                    textToSpeak,
-                    slow,
-                    forceLang,
-                    emotion,
-                    !customText && latestTutorMessage
-                      ? {
-                          teacherCommentary: latestTutorMessage.teacherCommentary,
-                          targetEnglishPhrase: latestTutorMessage.targetEnglishPhrase,
-                        }
-                      : undefined
-                  );
-                }
-              }}
-              onSaveVocabulary={handleSaveVocabulary}
-              onSpeakWord={handleSpeakWord}
-              onPracticePhrase={handlePracticePhrase}
-              onOpenPhoneticLab={(tab) => {
-                setPhoneticModalTab(tab || "articulation");
-                setIsPhoneticModalOpen(true);
-              }}
-              teacherName={avatarConfig.name}
-              teacherRole={avatarConfig.role}
-              avatarEmoji={avatarConfig.characterEmoji}
-              avatarBadge={avatarConfig.badgeText}
-              isLoading={isLoading}
-            />
-          </section>
+              {/* Live Grammar & Rephrase Feedback Sheet */}
+              {liveGrammarCorrection && (
+                <section className="w-full z-20">
+                  <GrammarFeedbackSheet
+                    correction={liveGrammarCorrection}
+                    onDismiss={() => setLiveGrammarCorrection(null)}
+                    avatarConfig={avatarConfig}
+                  />
+                </section>
+              )}
 
-          {/* Pronunciation Meter */}
-          {wordAccuracies.length > 0 && (
-            <section className="w-full">
-              <PronunciationMeter
-                userTranscript={lastSpokenText}
-                targetPhrase={targetPhraseToEvaluate}
-                wordAccuracies={wordAccuracies}
-                overallScore={overallPronunciationScore}
-                avatarVoiceAccent={avatarConfig.voiceAccent}
-                avatarVoiceGender={avatarConfig.voiceGender}
-                onOpenEchoTrainer={() => setIsEchoTrainerModalOpen(true)}
-                onDismiss={() => setWordAccuracies([])}
-              />
-            </section>
+              {/* Bottom Interaction Zone */}
+              <section className="w-full sticky bottom-16 sm:bottom-20 z-20">
+                <InteractionBar
+                  quickChips={currentQuickChips}
+                  onSendMessage={handleSendMessage}
+                  isListening={isListening}
+                  setIsListening={setIsListening}
+                  isLoading={isLoading}
+                  isPlayingAudio={isPlayingAudio}
+                  handsFreeMode={handsFreeMode}
+                  setHandsFreeMode={setHandsFreeMode}
+                  onOpenHistory={() => setIsHistoryModalOpen(true)}
+                  historyCount={messages.length}
+                  onOpenVoiceCall={() => setIsVoiceCallOpen(true)}
+                  onOpenSpeedSpeaking={() => setIsSpeedChallengeOpen(true)}
+                  onOpenCustomScenario={() => setIsCustomScenarioOpen(true)}
+                  onOpenSkillRadar={() => setIsSkillRadarOpen(true)}
+                />
+              </section>
+            </motion.main>
           )}
-
-          {/* Live Grammar & Rephrase Feedback Sheet */}
-          {liveGrammarCorrection && (
-            <section className="w-full z-20">
-              <GrammarFeedbackSheet
-                correction={liveGrammarCorrection}
-                onDismiss={() => setLiveGrammarCorrection(null)}
-                avatarConfig={avatarConfig}
-              />
-            </section>
-          )}
-
-          {/* Bottom Interaction Zone */}
-          <section className="w-full sticky bottom-16 sm:bottom-20 z-20">
-            <InteractionBar
-              quickChips={currentQuickChips}
-              onSendMessage={handleSendMessage}
-              isListening={isListening}
-              setIsListening={setIsListening}
-              isLoading={isLoading}
-              isPlayingAudio={isPlayingAudio}
-              handsFreeMode={handsFreeMode}
-              setHandsFreeMode={setHandsFreeMode}
-              onOpenHistory={() => setIsHistoryModalOpen(true)}
-              historyCount={messages.length}
-            />
-          </section>
-        </main>
-      )}
+        </AnimatePresence>
+      </div>
 
       {/* Bottom Navigation Bar (Apple / Duolingo Style) */}
       <BottomNavBar
@@ -1225,6 +1580,7 @@ export default function App() {
         onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
         onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
         onSwitchToKidsMode={handleSwitchToKidsMode}
+        onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
         streakDays={gamification.streakDays}
         gemsCount={gamification.gems}
         ambienceMode={ambienceMode}
@@ -1302,6 +1658,7 @@ export default function App() {
             };
             setGamification(updatedGam);
             saveStoredGamification(updatedGam);
+            haptics.lessonComplete();
 
             // Open Victory Screen
             setVictoryModalState({
@@ -1326,6 +1683,86 @@ export default function App() {
         accuracyScore={victoryModalState.accuracyScore}
         wordsLearned={victoryModalState.wordsLearned}
         topicTitle={victoryModalState.topicTitle}
+      />
+
+      {/* 1. Full-Screen Voice Call Modal (Hands-Free with VAD) */}
+      <VoiceCallModal
+        isOpen={isVoiceCallOpen}
+        onClose={() => setIsVoiceCallOpen(false)}
+        characterName={avatarConfig.name}
+        avatarEmoji={avatarConfig.characterEmoji || "🐦"}
+        topicTitle={activeTopic.title}
+        isTutorSpeaking={isPlayingAudio}
+        onSendMessage={handleSendMessage}
+        latestTutorMessage={latestTutorMessage?.text || ""}
+        latestSpanishTranslation={latestTutorMessage?.spanishExplanation}
+      />
+
+      {/* 2. Custom Roleplay Scenario Generator with AI */}
+      <CustomScenarioPromptModal
+        isOpen={isCustomScenarioOpen}
+        onClose={() => setIsCustomScenarioOpen(false)}
+        onStartCustomScenario={(title, promptText) => {
+          handleSendMessage(`Let's do a roleplay scenario: ${promptText}`);
+        }}
+      />
+
+      {/* 3. Speed Speaking 60s Challenge Modal */}
+      <SpeedSpeakingChallengeModal
+        isOpen={isSpeedChallengeOpen}
+        onClose={() => setIsSpeedChallengeOpen(false)}
+        onRewardXP={(rewardXP) => {
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + rewardXP,
+            gems: gamification.gems + Math.floor(rewardXP / 5),
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+        }}
+      />
+
+      {/* 4. CEFR Skills Radar Modal */}
+      <SkillRadarModal
+        isOpen={isSkillRadarOpen}
+        onClose={() => setIsSkillRadarOpen(false)}
+        cefrLevel={cefrLevel}
+        fluencyScore={85}
+        pronunciationScore={overallPronunciationScore > 0 ? overallPronunciationScore : 88}
+        grammarScore={82}
+        vocabularyScore={90}
+        comprehensionScore={94}
+      />
+
+      {/* 5. Weekly Competitive League Leaderboard Modal */}
+      <WeeklyLeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+        userXP={gamification.xpPoints}
+        userName={avatarConfig.name === "Bet el Turpial" ? "Tú" : "Estudiante"}
+        userStreak={gamification.streakDays}
+      />
+
+      {/* 6. Weekly Speaking Minutes & CEFR Progress Analytics Dashboard */}
+      <WeeklyProgressDashboardModal
+        isOpen={isProgressDashboardOpen}
+        onClose={() => setIsProgressDashboardOpen(false)}
+        streakDays={gamification.streakDays}
+        wordsLearnedCount={userStats.wordsLearned || vocabulary.length}
+        totalSpeakingMinutes={userStats.minutesPracticed || 18}
+        cefrLevel={cefrLevel}
+      />
+
+      {/* 7. Seasonal Theme Engine & Particle Effects Modal */}
+      <SeasonalThemeModal
+        isOpen={isSeasonalThemeModalOpen}
+        onClose={() => setIsSeasonalThemeModalOpen(false)}
+        currentThemeId={seasonalThemeId}
+        onSelectTheme={handleSelectSeasonalTheme}
+        particlesEnabled={particlesEnabled}
+        onToggleParticles={handleToggleParticles}
+        particleDensity={particleDensity}
+        onChangeDensity={handleChangeParticleDensity}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Sparkles, Star, Coins, ArrowRight, RotateCcw, Trophy, PartyPopper } from "lucide-react";
 import { playVictoryFanfare, playCoinCollect, playPopSound } from "../utils/audioSynth";
 import { fireSuccessConfetti } from "../utils/confettiHelper";
+import { haptics } from "../utils/haptics";
 
 export interface KidsVictoryModalProps {
   isOpen: boolean;
@@ -36,8 +37,9 @@ export const KidsVictoryModal: React.FC<KidsVictoryModalProps> = ({
       setDisplayCoins(0);
       setDisplayStars(0);
 
-      // 1. Audio y confeti de victoria
+      // 1. Audio, háptica y confeti de victoria
       playVictoryFanfare();
+      haptics.celebrate();
       fireSuccessConfetti();
 
       // 2. Animación de conteo ascendente para monedas

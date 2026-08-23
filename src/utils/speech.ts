@@ -1,9 +1,24 @@
 import { AvatarConfig } from "../types";
 
-// --- REFERENCIAS DE AUDIO GLOBALES ---
+// --- REFERENCIAS DE AUDIO GLOBALES Y CACHÉ OFFLINE ---
 let currentAudioCtx: AudioContext | null = null;
 let currentSource: AudioBufferSourceNode | null = null;
 let animationFrameId: number | null = null;
+const audioBufferCache = new Map<string, AudioBuffer>();
+
+// Pre-calienta el AudioContext en el primer toque de pantalla para evitar retraso de 300ms
+export function prewarmAudioContext(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!currentAudioCtx && AudioContextClass) {
+      currentAudioCtx = new AudioContextClass();
+    }
+    if (currentAudioCtx && currentAudioCtx.state === "suspended") {
+      currentAudioCtx.resume();
+    }
+  } catch {}
+}
 
 let currentUtterance: SpeechSynthesisUtterance | null = null;
 let lipSyncTimeout: number | null = null;

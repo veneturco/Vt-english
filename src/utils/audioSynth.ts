@@ -1,3 +1,5 @@
+import { haptics } from "./haptics";
+
 /**
  * Sintetizador de Audio Procedural 8-bit con Web Audio API Nativa
  * 100% Sin dependencias, cero latencia, tonos chiptune retro y compatible con políticas de autoplay.
@@ -44,6 +46,7 @@ class Audio8BitSynthEngine {
    * Clásico efecto arcade: Arpegio B5 (987.77 Hz) -> E6 (1318.51 Hz) con onda cuadrada / pulso retro
    */
   public playCoinSound(): void {
+    haptics.light();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -82,6 +85,7 @@ class Audio8BitSynthEngine {
    * Rampa de frecuencia rápida ascendente estilo NES (140 Hz -> 680 Hz)
    */
   public playJumpSound(): void {
+    haptics.success();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -109,6 +113,7 @@ class Audio8BitSynthEngine {
    * Glissando descendente no punitivo con onda triangular suave (330 Hz -> 240 Hz -> 175 Hz)
    */
   public playErrorSoft(): void {
+    haptics.error();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -137,6 +142,7 @@ class Audio8BitSynthEngine {
    * Triada mayor ascendente estilo Game Boy (C5 -> E5 -> G5 -> C6)
    */
   public playSuccessFanfare(): void {
+    haptics.lessonComplete();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -168,6 +174,7 @@ class Audio8BitSynthEngine {
    * 5. Sonido de Pop / Click 8-bit (playPopSound)
    */
   public playPopSound(): void {
+    haptics.light();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -193,6 +200,7 @@ class Audio8BitSynthEngine {
    * 6. Power-up 8-bit (playPowerupSound)
    */
   public playPowerupSound(): void {
+    haptics.celebrate();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -220,6 +228,7 @@ class Audio8BitSynthEngine {
    * Arpegio rápido ascendente brillante (C5 -> E5 -> G5 -> C6 -> E6)
    */
   public playVictoryFanfare(): void {
+    haptics.lessonComplete();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -260,6 +269,7 @@ class Audio8BitSynthEngine {
    * Tono amable y curioso con onda sinusoidal suave (no punitivo)
    */
   public playTryAgainSoft(): void {
+    haptics.warning();
     if (this.isMuted) return;
     const ctx = this.getContext();
     if (!ctx) return;

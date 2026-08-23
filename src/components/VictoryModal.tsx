@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, Flame, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
 import { soundFx } from "../utils/soundFx";
+import { haptics } from "../utils/haptics";
 
 interface VictoryModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       soundFx.playQuestComplete();
+      haptics.celebrate();
     }
   }, [isOpen]);
 

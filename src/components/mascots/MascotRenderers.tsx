@@ -4,3 +4,4 @@ export { LuigiMascot } from "./LuigiMascot";
 export { RexyMascot } from "./RexyMascot";
 export { PipRaptorMascot } from "./PipRaptorMascot";
 export { GoombaMascot } from "./GoombaMascot";
+export { TurpialMasterMascot } from "./TurpialMascot";
