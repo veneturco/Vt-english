@@ -7,6 +7,7 @@ export interface MascotRenderProps {
   isHappy: boolean;
   isSurprised: boolean;
   isThinking: boolean;
+  isLoving?: boolean;
   pupilX: number;
   pupilY: number;
   mouthOpenAmount: number;

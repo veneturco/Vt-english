@@ -68,6 +68,10 @@
 /* Pixar & PBR-style Dynamic Key & Bounce Light Shader for #avatar-stage */
 #avatar-stage {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   --mouth-intensity: 0;
   contain: layout paint;
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
@@ -451,5 +455,140 @@
     transform: scale(2.2);
   }
 }
+
+/* Organic Idle Bobbing Animation for Turpial Mascot & Avatar2DCanvas (translates vertically by 5px) */
+@keyframes bobbing {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes turpialBobbing {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-bobbing {
+  animation: bobbing 3s ease-in-out infinite;
+}
+
+.animate-turpial-bobbing {
+  animation: turpialBobbing 3s ease-in-out infinite;
+}
+
+/* Organic Avatar Mascot Dynamic Movements */
+@keyframes turpialBreathing {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1);
+  }
+  50% {
+    transform: scaleY(1.022) scaleX(0.988) translateY(-1.5px);
+  }
+}
+
+@keyframes wingFlapJoyful {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(28deg) translateY(-12px);
+  }
+}
+
+@keyframes listeningPulse {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes springPokeWobble {
+  0% {
+    transform: scale(0.92, 1.12) translateY(-8px);
+  }
+  30% {
+    transform: scale(1.08, 0.94) translateY(2px);
+  }
+  60% {
+    transform: scale(0.98, 1.03) translateY(-2px);
+  }
+  100% {
+    transform: scale(1, 1) translateY(0);
+  }
+}
+
+.animate-turpial-breathing {
+  animation: turpialBreathing 3.6s ease-in-out infinite;
+}
+
+.animate-spring-poke {
+  animation: springPokeWobble 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Loving / Heart-Eyes State Animations: Soft Scaling & Smooth Fading Keyframes */
+@keyframes heartEyesScaleFade {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+    filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.6));
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(244, 63, 94, 0.95)) drop-shadow(0 0 20px rgba(236, 72, 153, 0.6));
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.7;
+    filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.6));
+  }
+}
+
+@keyframes heartAuraFloat {
+  0%, 100% {
+    transform: scale(0.95) translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08) translateY(-4px);
+    opacity: 0.95;
+  }
+}
+
+@keyframes lovingBlushSoft {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 0.88;
+  }
+}
+
+.animate-heart-eyes-scale-fade {
+  animation: heartEyesScaleFade 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.animate-heart-aura-float {
+  animation: heartAuraFloat 2.4s ease-in-out infinite;
+}
+
+.animate-loving-blush-soft {
+  animation: lovingBlushSoft 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+
 
 

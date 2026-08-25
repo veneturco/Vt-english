@@ -273,7 +273,9 @@ export type AvatarAnimationState =
   | "encouraging"
   | "sorpresa"
   | "pensativo"
-  | "alegre";
+  | "alegre"
+  | "loving"
+  | "celebrating";
 
 export interface UserStats {
   streakDays: number;

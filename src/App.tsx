@@ -444,8 +444,22 @@ export default function App() {
   ];
 
   // Helper to determine expressive emotion state from tutor speech and pedagogical context
-  const determineTutorEmotion = (msg: ChatMessage): AvatarAnimationState => {
+  const determineTutorEmotion = (
+    msg: ChatMessage,
+    context?: { score?: number; streak?: number }
+  ): AvatarAnimationState => {
     const text = ((msg.text || "") + " " + (msg.teacherCommentary || "")).toLowerCase();
+    
+    // High streak, exceptional score, or loving feedback triggers heart-eyes loving animation
+    const isLovingContext =
+      (context?.streak && context.streak >= 3) ||
+      (context?.score && context.score >= 90) ||
+      /heart|love|enamorado|orgulloso|proud of you|in love with|impecable|obra de arte|perfección|perfect pronunciation|mastery|racha|racha de fuego|high streak|exceptional|brillante/i.test(
+        text
+      );
+
+    if (isLovingContext) return "loving";
+
     const hasPraise = Boolean(msg.correction?.praise) || (msg.correction && !msg.correction.hasError);
     const isPraiseOrExcited =
       hasPraise ||
@@ -828,8 +842,14 @@ export default function App() {
         });
       }
 
-      // Detect emotion (alegre, pensativo, sorpresa) based on pedagogical intent
-      const reactionEmotion = determineTutorEmotion(tutorMsg);
+      // Detect emotion (loving, alegre/celebrating, pensativo, sorpresa) based on AI output, streak & score
+      const reactionEmotion =
+        aiData.animationState === "loving" || aiData.animationState === "celebrating" || aiData.animationState === "alegre" || aiData.animationState === "pensativo" || aiData.animationState === "sorpresa"
+          ? (aiData.animationState as AvatarAnimationState)
+          : determineTutorEmotion(tutorMsg, {
+              score: overallPronunciationScore,
+              streak: userStats.streakDays,
+            });
 
       // Play audio automatically with bilingual dual voice and facial emotion
       playTutorAudio(
@@ -1268,7 +1288,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98, y: 8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 whileTap={{ scale: 0.97 }}
-                className={`w-full min-h-[220px] sm:min-h-[260px] max-h-[300px] flex items-center justify-center relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 ${
+                className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] flex flex-col items-stretch justify-between relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 p-3 sm:p-4 gap-2 ${
                   isPlayingAudio || animationState === "speaking"
                     ? "border-amber-400/80 stage-speaking-pulse"
                     : "border-slate-800"
@@ -1291,13 +1311,13 @@ export default function App() {
                   isSpeaking={isPlayingAudio || animationState === "speaking"}
                 />
 
-                {/* Top Floating Tutor Badge */}
-                <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
+                {/* Top Row: Name Badge & Status Controls */}
+                <div className="w-full flex items-center justify-between gap-2 z-20 pointer-events-auto shrink-0">
                   {/* Mascot Identity Tag Pill */}
                   <button
                     type="button"
                     onClick={() => setIsAvatarModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 shadow-sm transition text-left"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 shadow-sm transition text-left"
                     title="Cambiar tutor o personalizar"
                   >
                     <span className="text-sm leading-none">{avatarConfig.characterEmoji || "🐦"}</span>
@@ -1307,11 +1327,31 @@ export default function App() {
                     </span>
                   </button>
 
+                  {/* Center Live Status Indicator */}
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800/80 text-[11px] font-semibold text-slate-300 shadow-inner">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        isPlayingAudio || animationState === "speaking"
+                          ? "bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                          : isListening
+                          ? "bg-sky-400 animate-ping"
+                          : "bg-amber-400/80"
+                      }`}
+                    />
+                    <span className="text-[10px] tracking-wide">
+                      {isPlayingAudio || animationState === "speaking"
+                        ? "Hablando..."
+                        : isListening
+                        ? "Escuchando..."
+                        : "Listo para hablar"}
+                    </span>
+                  </div>
+
                   {/* Quick Tutor Selector */}
                   <button
                     type="button"
                     onClick={() => setIsAvatarModalOpen(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950 border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
                     title="Cambiar tutor"
                   >
                     <span>✨</span>
@@ -1319,34 +1359,36 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Avatar 3D o Avatar 2.5D */}
-                {avatarConfig.customGlbUrl ? (
-                  <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
-                    <AvatarCanvas
+                {/* Central Predominant Mascot Viewport */}
+                <div className="w-full flex-1 flex items-center justify-center relative z-10 my-auto min-h-[220px] sm:min-h-[260px] overflow-visible">
+                  {avatarConfig.customGlbUrl ? (
+                    <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
+                      <AvatarCanvas
+                        config={avatarConfig}
+                        animationState={animationState}
+                        mouthIntensity={mouthIntensity}
+                        isListening={isListening}
+                        onMascotClick={() => {
+                          setAnimationState("encouraging");
+                          setTimeout(() => setAnimationState("idle"), 1800);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <Avatar2DCanvas
                       config={avatarConfig}
                       animationState={animationState}
                       mouthIntensity={mouthIntensity}
                       isListening={isListening}
+                      dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
                       onMascotClick={() => {
                         setAnimationState("encouraging");
-                        setTimeout(() => setAnimationState("idle"), 1800);
+                        setTimeout(() => setAnimationState("idle"), 1500);
                       }}
+                      onCustomizerClick={() => setIsAvatarModalOpen(true)}
                     />
-                  </div>
-                ) : (
-                  <Avatar2DCanvas
-                    config={avatarConfig}
-                    animationState={animationState}
-                    mouthIntensity={mouthIntensity}
-                    isListening={isListening}
-                    dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
-                    onMascotClick={() => {
-                      setAnimationState("encouraging");
-                      setTimeout(() => setAnimationState("idle"), 1500);
-                    }}
-                    onCustomizerClick={() => setIsAvatarModalOpen(true)}
-                  />
-                )}
+                  )}
+                </div>
               </motion.section>
 
               {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}

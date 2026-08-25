@@ -197,7 +197,7 @@ export const AVATAR_PRESETS: Record<string, AvatarConfig> = {
     badgeText: "BET Accent Master",
     characterEmoji: "🐦",
     themeGradient: "from-amber-500 via-orange-500 to-yellow-400",
-    teachingStyleBio: "¡Hola! Con mi plumaje dorado y medalla BET te enseño el ritmo musical del inglés nativo, acentuación y enlaces de palabras.",
+    teachingStyleBio: "¡Hola! Con mi plumaje dorado y mis 3 medallas de honor te enseño el ritmo musical del inglés nativo, acentuación y enlaces de palabras.",
     skinTone: "#f59e0b",
     hairStyle: "feathers",
     hairColor: "#0f172a",

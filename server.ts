@@ -222,6 +222,10 @@ CONTEXTO ACTUAL:
               },
             },
             pedagogicalTip: { type: Type.STRING },
+            animationState: {
+              type: Type.STRING,
+              description: "Estado de animación para el avatar: 'speaking', 'loving' (para elogios destacados, alta racha o pronunciación sobresaliente con corazones), 'celebrating'/'alegre' (felicitaciones), 'pensativo' (preguntas) o 'sorpresa' (curiosidades).",
+            },
           },
           required: [
             "teacherCommentary",
