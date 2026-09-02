@@ -39,6 +39,8 @@ import { Navbar } from "./components/Navbar";
 import { KidsModeView } from "./components/KidsModeView";
 import { Avatar2DCanvas } from "./components/Avatar2DCanvas";
 import { AvatarCanvas } from "./components/AvatarCanvas";
+import { MascotPokeContainer } from "./components/mascots/MascotPokeContainer";
+import { TurpialRigCalibratorModal } from "./components/mascots/TurpialRigCalibratorModal";
 import { DialogueBubble } from "./components/DialogueBubble";
 import { InteractionBar } from "./components/InteractionBar";
 import { PronunciationMeter } from "./components/PronunciationMeter";
@@ -226,6 +228,7 @@ export default function App() {
   );
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState(false);
   const [isQuestsAndShopOpen, setIsQuestsAndShopOpen] = useState(false);
+  const [isTurpialCalibratorOpen, setIsTurpialCalibratorOpen] = useState(false);
   const [liveGrammarCorrection, setLiveGrammarCorrection] = useState<GrammarCorrection | null>(null);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
@@ -1288,7 +1291,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98, y: 8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 whileTap={{ scale: 0.97 }}
-                className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] flex flex-col items-stretch justify-between relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 p-3 sm:p-4 gap-2 ${
+                className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] grid grid-rows-[auto_1fr_auto] relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 p-3 sm:p-4 gap-2 ${
                   isPlayingAudio || animationState === "speaking"
                     ? "border-amber-400/80 stage-speaking-pulse"
                     : "border-slate-800"
@@ -1311,8 +1314,8 @@ export default function App() {
                   isSpeaking={isPlayingAudio || animationState === "speaking"}
                 />
 
-                {/* Top Row: Name Badge & Status Controls */}
-                <div className="w-full flex items-center justify-between gap-2 z-20 pointer-events-auto shrink-0">
+                {/* Row 1 (Auto): Top Header with Mascot Identity & Tutor Selector */}
+                <header className="w-full flex items-center justify-between gap-2 z-20 pointer-events-auto shrink-0">
                   {/* Mascot Identity Tag Pill */}
                   <button
                     type="button"
@@ -1347,48 +1350,96 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Quick Tutor Selector */}
-                  <button
-                    type="button"
-                    onClick={() => setIsAvatarModalOpen(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
-                    title="Cambiar tutor"
-                  >
-                    <span>✨</span>
-                    <span>Tutores</span>
-                  </button>
-                </div>
+                  <div className="flex items-center gap-1.5">
+                    {/* Calibrador Anatómico 2.5D Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsTurpialCalibratorOpen(true)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 backdrop-blur-sm border-2 border-b-4 border-amber-500/40 hover:border-amber-500/70 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                      title="Calibrar distancias de cabeza, alas y medallas"
+                    >
+                      <span>📐</span>
+                      <span className="hidden sm:inline">Calibrar Rig</span>
+                    </button>
 
-                {/* Central Predominant Mascot Viewport */}
-                <div className="w-full flex-1 flex items-center justify-center relative z-10 my-auto min-h-[220px] sm:min-h-[260px] overflow-visible">
-                  {avatarConfig.customGlbUrl ? (
-                    <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
-                      <AvatarCanvas
+                    {/* Quick Tutor Selector */}
+                    <button
+                      type="button"
+                      onClick={() => setIsAvatarModalOpen(true)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                      title="Cambiar tutor"
+                    >
+                      <span>✨</span>
+                      <span>Tutores</span>
+                    </button>
+                  </div>
+                </header>
+
+                {/* Row 2 (1fr): Central Primary Flexible Mascot Viewport with Framer Motion Poke Squish Interaction */}
+                <main className="w-full h-full min-h-0 flex items-center justify-center relative z-10 overflow-visible">
+                  <MascotPokeContainer
+                    preset={avatarConfig.preset}
+                    onPoke={() => {
+                      setAnimationState("encouraging");
+                      setTimeout(() => setAnimationState("idle"), 1600);
+                    }}
+                  >
+                    {avatarConfig.customGlbUrl ? (
+                      <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
+                        <AvatarCanvas
+                          config={avatarConfig}
+                          animationState={animationState}
+                          mouthIntensity={mouthIntensity}
+                          isListening={isListening}
+                          onMascotClick={() => {
+                            setAnimationState("encouraging");
+                            setTimeout(() => setAnimationState("idle"), 1800);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Avatar2DCanvas
                         config={avatarConfig}
                         animationState={animationState}
                         mouthIntensity={mouthIntensity}
                         isListening={isListening}
+                        dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
                         onMascotClick={() => {
                           setAnimationState("encouraging");
-                          setTimeout(() => setAnimationState("idle"), 1800);
+                          setTimeout(() => setAnimationState("idle"), 1500);
                         }}
+                        onCustomizerClick={() => setIsAvatarModalOpen(true)}
                       />
-                    </div>
-                  ) : (
-                    <Avatar2DCanvas
-                      config={avatarConfig}
-                      animationState={animationState}
-                      mouthIntensity={mouthIntensity}
-                      isListening={isListening}
-                      dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
-                      onMascotClick={() => {
-                        setAnimationState("encouraging");
-                        setTimeout(() => setAnimationState("idle"), 1500);
-                      }}
-                      onCustomizerClick={() => setIsAvatarModalOpen(true)}
+                    )}
+                  </MascotPokeContainer>
+                </main>
+
+                {/* Row 3 (Auto): Anchored Footer with Live Feedback & Mic Cue */}
+                <footer className="w-full flex items-center justify-between text-[11px] text-slate-400 z-20 pointer-events-auto shrink-0 px-1">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${
+                        isPlayingAudio || animationState === "speaking"
+                          ? "bg-amber-400 animate-pulse"
+                          : isListening
+                          ? "bg-emerald-400 animate-ping"
+                          : "bg-slate-600"
+                      }`}
                     />
-                  )}
-                </div>
+                    <span className="text-[10px] text-slate-300">
+                      {isPlayingAudio || animationState === "speaking"
+                        ? "Audio activo • Pronunciación en vivo"
+                        : isListening
+                        ? "Micrófono detectando voz..."
+                        : "Toca el avatar para interactuar"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold">
+                    <span>Nivel {cefrLevel}</span>
+                    <span className="text-slate-600">•</span>
+                    <span>{gamification.xpPoints} XP</span>
+                  </div>
+                </footer>
               </motion.section>
 
               {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}
@@ -1830,6 +1881,12 @@ export default function App() {
         onToggleParticles={handleToggleParticles}
         particleDensity={particleDensity}
         onChangeDensity={handleChangeParticleDensity}
+      />
+
+      {/* 8. Turpial Rig 2.5D Calibrator Modal (Manual Spacing & Medals Controls) */}
+      <TurpialRigCalibratorModal
+        isOpen={isTurpialCalibratorOpen}
+        onClose={() => setIsTurpialCalibratorOpen(false)}
       />
     </div>
   );

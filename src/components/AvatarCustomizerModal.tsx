@@ -21,6 +21,7 @@ import { AvatarConfig, AvatarModelPreset } from "../types";
 import { AVATAR_PRESETS } from "../data/presets";
 import { speakText } from "../utils/speech";
 import { Avatar2DCanvas } from "./Avatar2DCanvas";
+import { TurpialRigCalibratorModal } from "./mascots/TurpialRigCalibratorModal";
 
 interface AvatarCustomizerModalProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
     "bet_avatars" | "hd_art" | "human_avatars" | "features" | "outfit" | "voice"
   >("bet_avatars");
   const [tempConfig, setTempConfig] = useState<AvatarConfig>(config);
+  const [isCalibratorOpen, setIsCalibratorOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -337,14 +339,27 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleTestVoice}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover:scale-105 active:scale-95 transition shrink-0"
-            >
-              <Volume2 className="w-4 h-4" />
-              <span>Escuchar Voz</span>
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {tempConfig.preset === "bet_turpial" && (
+                <button
+                  type="button"
+                  onClick={() => setIsCalibratorOpen(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 text-amber-300 font-bold text-xs transition shadow-sm"
+                  title="Calibrar distancias de cabeza, alas y medallas"
+                >
+                  <span>📐</span>
+                  <span>Calibrar Rig</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleTestVoice}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover:scale-105 active:scale-95 transition shrink-0"
+              >
+                <Volume2 className="w-4 h-4" />
+                <span>Escuchar Voz</span>
+              </button>
+            </div>
           </div>
 
           {/* TAB: HD 3D ILLUSTRATION & RIG 2.5D */}
@@ -1160,6 +1175,12 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 2.5D Calibrator Modal when opened from Customizer */}
+      <TurpialRigCalibratorModal
+        isOpen={isCalibratorOpen}
+        onClose={() => setIsCalibratorOpen(false)}
+      />
     </div>
   );
 };

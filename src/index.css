@@ -68,10 +68,9 @@
 /* Pixar & PBR-style Dynamic Key & Bounce Light Shader for #avatar-stage */
 #avatar-stage {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   --mouth-intensity: 0;
   contain: layout paint;
   transition: border-color 0.4s ease, box-shadow 0.4s ease;

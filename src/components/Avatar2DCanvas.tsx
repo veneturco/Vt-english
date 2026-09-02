@@ -548,6 +548,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
           isListening,
           isGoalAchievedCelebration: isMedalGoalCelebrating || Boolean(isDailyGoalCelebration),
           idleHeadAngle,
+          onMascotClick,
         })}
       </motion.div>
 
@@ -768,6 +769,7 @@ interface CharacterRenderProps {
   isListening: boolean;
   isGoalAchievedCelebration?: boolean;
   idleHeadAngle?: number;
+  onMascotClick?: () => void;
 }
 
 // Global SVG Unlockable Accessories Layer
@@ -978,6 +980,7 @@ function renderCharacterSVG({
   isListening,
   isGoalAchievedCelebration = false,
   idleHeadAngle = 0,
+  onMascotClick,
 }: CharacterRenderProps) {
   const isLoving = emotion === "loving";
   const isHappy = emotion === "alegre" || emotion === "celebrating" || emotion === "encouraging" || isLoving;
@@ -1087,6 +1090,7 @@ function renderCharacterSVG({
           mouthIntensity={mouthOpenAmount}
           isListening={isListening}
           headTilt={idleHeadAngle}
+          onTap={onMascotClick}
         />
       );
 
