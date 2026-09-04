@@ -45,8 +45,10 @@ interface Avatar2DCanvasProps {
   onMascotClick?: () => void;
   overrideEmotion?: MascotGestureEmotion | null;
   onCustomizerClick?: () => void;
+  onCalibrateRigClick?: () => void;
   isDailyGoalCelebration?: boolean;
   dailyGoalAchievedTrigger?: number;
+  stageMousePos?: { x: number; y: number };
 }
 
 export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
@@ -57,11 +59,14 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   onMascotClick,
   overrideEmotion = null,
   onCustomizerClick,
+  onCalibrateRigClick,
   isDailyGoalCelebration = false,
   dailyGoalAchievedTrigger = 0,
+  stageMousePos,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const effectiveMousePos = stageMousePos ?? mousePos;
   const [isBlinking, setIsBlinking] = useState(false);
   const [activeEmote, setActiveEmote] = useState<string | null>(null);
   const [currentGesture, setCurrentGesture] = useState<MascotGestureEmotion>("idle");
@@ -311,7 +316,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
 
   // Dynamic 3D tilt calculations
   const tiltX =
-    mousePos.y * -14 +
+    effectiveMousePos.y * -14 +
     (effectiveEmotion === "pensativo"
       ? 7
       : effectiveEmotion === "listening"
@@ -321,7 +326,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       : 0);
 
   const tiltY =
-    mousePos.x * 16 +
+    effectiveMousePos.x * 16 +
     (effectiveEmotion === "pensativo"
       ? -11
       : effectiveEmotion === "speaking"
@@ -344,13 +349,13 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
     ? 0
     : isPensive
     ? 4.5
-    : Math.max(-7, Math.min(7, mousePos.x * 12 + eyeSaccade.x));
+    : Math.max(-8, Math.min(8, effectiveMousePos.x * 16 + eyeSaccade.x));
 
   const pupilY = isSurprised
     ? -0.5
     : isPensive
     ? -4.5
-    : Math.max(-5, Math.min(5, mousePos.y * 9 + eyeSaccade.y));
+    : Math.max(-6, Math.min(6, effectiveMousePos.y * 12 + eyeSaccade.y));
 
   // Dynamic mouth aperture factoring speech intensity, visemes & surprised state
   const rawIntensity = Math.max(0, mouthIntensity);
@@ -549,6 +554,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
           isGoalAchievedCelebration: isMedalGoalCelebrating || Boolean(isDailyGoalCelebration),
           idleHeadAngle,
           onMascotClick,
+          mouseOffset: effectiveMousePos,
         })}
       </motion.div>
 
@@ -632,6 +638,17 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
             title="Cambiar de Avatar BET o Ropa"
           >
             <span>✨ Tutor</span>
+          </button>
+        )}
+
+        {config.preset === "bet_turpial" && onCalibrateRigClick && (
+          <button
+            type="button"
+            onClick={onCalibrateRigClick}
+            className="px-2.5 py-1 rounded-full text-[11px] font-bold text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1 border-l border-slate-700 ml-0.5"
+            title="Calibrar boca, ojos y distancias en tiempo real"
+          >
+            <span>👄 Calibrar</span>
           </button>
         )}
       </div>
@@ -770,6 +787,312 @@ interface CharacterRenderProps {
   isGoalAchievedCelebration?: boolean;
   idleHeadAngle?: number;
   onMascotClick?: () => void;
+  mouseOffset?: { x: number; y: number };
+}
+
+// ==========================================
+// 5 CURRENT AVATAR MEDALS CONFIGURATION & ARRAY MAPPING
+// ==========================================
+
+export interface AvatarMedalConfig {
+  id: string;
+  name: string;
+  label: string;
+  cx: number;
+  cy: number;
+  r: number;
+  ribbonD: string;
+  ribbonColor: string;
+  ribbonStripeColor: string;
+  metalFill: string;
+  rimStroke: string;
+  innerDashedStroke: string;
+  textFill: string;
+  fontSize?: string;
+  fontWeight?: string;
+  glintPos: { x: number; y: number };
+  dropShadowClass?: string;
+  isMain?: boolean;
+  active?: boolean;
+}
+
+export const CURRENT_AVATAR_MEDALS: AvatarMedalConfig[] = [
+  {
+    id: "m_egg_master",
+    name: "Egg Master (Racha Diaria)",
+    label: "🥚",
+    cx: 84,
+    cy: 212,
+    r: 13,
+    ribbonD: "M 74 186 Q 84 204 94 186",
+    ribbonColor: "#059669",
+    ribbonStripeColor: "#a7f3d0",
+    metalFill: "url(#emeraldMedalMaster3D)",
+    rimStroke: "#065f46",
+    innerDashedStroke: "#10b981",
+    textFill: "#064e3b",
+    fontSize: "9",
+    glintPos: { x: 91, y: 205 },
+    dropShadowClass: "filter drop-shadow-[0_4px_10px_rgba(5,150,105,0.45)]",
+    active: true,
+  },
+  {
+    id: "m_dino_star",
+    name: "Dino Star (Fonética & Vocabulario)",
+    label: "⭐",
+    cx: 111,
+    cy: 220,
+    r: 15.5,
+    ribbonD: "M 99 187 Q 111 210 123 187",
+    ribbonColor: "#d97706",
+    ribbonStripeColor: "#fef08a",
+    metalFill: "url(#amberMedalMaster3D)",
+    rimStroke: "#92400e",
+    innerDashedStroke: "#f59e0b",
+    textFill: "#78350f",
+    fontSize: "11",
+    glintPos: { x: 120, y: 212 },
+    dropShadowClass: "filter drop-shadow-[0_6px_14px_rgba(217,119,6,0.5)]",
+    active: true,
+  },
+  {
+    id: "bet_medal",
+    name: "Medalla de Oro Oficial BET",
+    label: "VT",
+    cx: 140,
+    cy: 227,
+    r: 19.5,
+    ribbonD: "M 124 188 Q 140 216 156 188",
+    ribbonColor: "#1d4ed8",
+    ribbonStripeColor: "#fde047",
+    metalFill: "url(#goldMedalMaster3D)",
+    rimStroke: "#854d0e",
+    innerDashedStroke: "#ca8a04",
+    textFill: "#713f12",
+    fontSize: "13",
+    fontWeight: "900",
+    glintPos: { x: 152, y: 217 },
+    dropShadowClass: "filter drop-shadow-[0_8px_18px_rgba(245,158,11,0.65)]",
+    isMain: true,
+    active: true,
+  },
+  {
+    id: "m_raptor_speaker",
+    name: "Raptor Speaker (Fluidez & Habla)",
+    label: "🎙️",
+    cx: 169,
+    cy: 220,
+    r: 15.5,
+    ribbonD: "M 157 187 Q 169 210 181 187",
+    ribbonColor: "#0284c7",
+    ribbonStripeColor: "#bae6fd",
+    metalFill: "url(#sapphireMedalMaster3D)",
+    rimStroke: "#075985",
+    innerDashedStroke: "#38bdf8",
+    textFill: "#0c4a6e",
+    fontSize: "10",
+    glintPos: { x: 178, y: 212 },
+    dropShadowClass: "filter drop-shadow-[0_6px_14px_rgba(2,132,199,0.5)]",
+    active: true,
+  },
+  {
+    id: "m_rex_champion",
+    name: "Rex Champion (Maestría en Inglés)",
+    label: "👑",
+    cx: 196,
+    cy: 212,
+    r: 13,
+    ribbonD: "M 186 186 Q 196 204 206 186",
+    ribbonColor: "#7c3aed",
+    ribbonStripeColor: "#f5d0fe",
+    metalFill: "url(#purpleMedalMaster3D)",
+    rimStroke: "#5b21b6",
+    innerDashedStroke: "#a855f7",
+    textFill: "#4c1d95",
+    fontSize: "9",
+    glintPos: { x: 203, y: 205 },
+    dropShadowClass: "filter drop-shadow-[0_4px_10px_rgba(124,58,237,0.45)]",
+    active: true,
+  },
+];
+
+/**
+ * Reusable 3D metallic gradients for medals
+ */
+const renderMedalGradientsDefs = () => (
+  <defs key="avatar-medals-defs">
+    {/* Master 3D Gold Gradient */}
+    <linearGradient id="goldMedalMaster3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fef08a" />
+      <stop offset="30%" stopColor="#facc15" />
+      <stop offset="70%" stopColor="#eab308" />
+      <stop offset="100%" stopColor="#854d0e" />
+    </linearGradient>
+
+    {/* Master 3D Sapphire Blue Gradient */}
+    <linearGradient id="sapphireMedalMaster3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#bae6fd" />
+      <stop offset="35%" stopColor="#38bdf8" />
+      <stop offset="70%" stopColor="#0284c7" />
+      <stop offset="100%" stopColor="#0c4a6e" />
+    </linearGradient>
+
+    {/* Master 3D Emerald Teal Gradient */}
+    <linearGradient id="emeraldMedalMaster3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#a7f3d0" />
+      <stop offset="35%" stopColor="#34d399" />
+      <stop offset="70%" stopColor="#059669" />
+      <stop offset="100%" stopColor="#064e3b" />
+    </linearGradient>
+
+    {/* Master 3D Imperial Purple Gradient */}
+    <linearGradient id="purpleMedalMaster3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#f5d0fe" />
+      <stop offset="35%" stopColor="#c084fc" />
+      <stop offset="70%" stopColor="#9333ea" />
+      <stop offset="100%" stopColor="#581c87" />
+    </linearGradient>
+
+    {/* Master 3D Amber Orange Gradient */}
+    <linearGradient id="amberMedalMaster3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fef3c7" />
+      <stop offset="35%" stopColor="#fbbf24" />
+      <stop offset="70%" stopColor="#d97706" />
+      <stop offset="100%" stopColor="#78350f" />
+    </linearGradient>
+  </defs>
+);
+
+/**
+ * Renderizado modular de las 5 medallas mediante mapeo de array
+ * Evita duplicación de código en SVG y simplifica la gestión visual
+ */
+export function renderMedalsOverlay(
+  medals: AvatarMedalConfig[] = CURRENT_AVATAR_MEDALS,
+  isGoalAchievedCelebration = false
+) {
+  const visibleMedals = medals.filter((m) => m.active !== false);
+
+  return (
+    <g id="avatar-medals-group">
+      {renderMedalGradientsDefs()}
+
+      {/* Mapeo limpio del array de medallas */}
+      {visibleMedals.map((medal, index) => (
+        <g
+          key={medal.id}
+          id={`avatar-medal-item-${medal.id}`}
+          className={`origin-[${medal.cx}px_${medal.cy}px] ${medal.dropShadowClass || ""}`}
+          style={{
+            animation: isGoalAchievedCelebration
+              ? `medalEntranceScaleIn 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) ${index * 0.08}s forwards`
+              : undefined,
+          }}
+        >
+          {/* Goal Achieved Radiant Aura Burst en medallas destacadas durante celebración */}
+          {isGoalAchievedCelebration && (
+            <g className={`origin-[${medal.cx}px_${medal.cy}px] pointer-events-none`}>
+              <circle
+                cx={medal.cx}
+                cy={medal.cy}
+                r={medal.r + 5}
+                fill="none"
+                stroke="#fde047"
+                strokeWidth="2.5"
+                opacity="0.85"
+                style={{ animation: "medalAuraBurst 1.2s ease-out infinite" }}
+              />
+              <circle
+                cx={medal.cx}
+                cy={medal.cy}
+                r={medal.r + 14}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="1.8"
+                strokeDasharray="3 3"
+                opacity="0.65"
+                style={{ animation: "medalAuraBurst 1.5s ease-out 0.25s infinite" }}
+              />
+            </g>
+          )}
+
+          {/* Cinta de suspensión (Cinta base y franja decorativa) */}
+          <path
+            d={medal.ribbonD}
+            stroke={medal.ribbonColor}
+            strokeWidth={medal.isMain ? "7.5" : "5.5"}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d={medal.ribbonD}
+            stroke={medal.ribbonStripeColor}
+            strokeWidth={medal.isMain ? "1.6" : "1.2"}
+            strokeLinecap="round"
+            fill="none"
+          />
+
+          {/* Disco Metálico de la Medalla */}
+          <circle
+            cx={medal.cx}
+            cy={medal.cy}
+            r={medal.r}
+            fill={medal.metalFill}
+            stroke={medal.rimStroke}
+            strokeWidth={medal.isMain ? "2.4" : "1.8"}
+          />
+          {/* Ribete concéntrico punteado decorativo */}
+          <circle
+            cx={medal.cx}
+            cy={medal.cy}
+            r={medal.r - 3.5}
+            fill="none"
+            stroke={medal.innerDashedStroke}
+            strokeWidth="1.2"
+            strokeDasharray="2.5 1.5"
+          />
+          {/* Bisel de brillo superior */}
+          <circle
+            cx={medal.cx}
+            cy={medal.cy}
+            r={medal.r - 5}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
+
+          {/* Monograma / Símbolo grabado con relieve */}
+          <text
+            x={medal.cx}
+            y={medal.cy + (medal.isMain ? 4.5 : 3.5)}
+            textAnchor="middle"
+            fill={medal.textFill}
+            fontSize={medal.fontSize || (medal.isMain ? "13" : "10")}
+            fontWeight={medal.fontWeight || "900"}
+            fontFamily="system-ui, -apple-system, sans-serif"
+            letterSpacing={medal.isMain ? "1px" : "normal"}
+            style={{ filter: "drop-shadow(0 1px 1px rgba(255,255,255,0.7))" }}
+          >
+            {medal.label}
+          </text>
+
+          {/* Destello de brillo estelar (Star Glint) con desfase rítmico */}
+          <g
+            className={`origin-[${medal.glintPos.x}px_${medal.glintPos.y}px]`}
+            style={{ animation: `medalStarGlint ${2.8 + index * 0.4}s ease-in-out ${index * 0.5}s infinite` }}
+          >
+            <polygon
+              points={`${medal.glintPos.x},${medal.glintPos.y - 4} ${medal.glintPos.x + 1.5},${medal.glintPos.y - 1} ${medal.glintPos.x + 4.5},${medal.glintPos.y} ${medal.glintPos.x + 1.5},${medal.glintPos.y + 1} ${medal.glintPos.x},${medal.glintPos.y + 4} ${medal.glintPos.x - 1.5},${medal.glintPos.y + 1} ${medal.glintPos.x - 4.5},${medal.glintPos.y} ${medal.glintPos.x - 1.5},${medal.glintPos.y - 1}`}
+              fill="#ffffff"
+              stroke="#fde047"
+              strokeWidth="0.6"
+            />
+          </g>
+        </g>
+      ))}
+    </g>
+  );
 }
 
 // Global SVG Unlockable Accessories Layer
@@ -777,92 +1100,7 @@ function renderAccessoryOverlay(accessory: AvatarAccessory, isGoalAchievedCelebr
   switch (accessory) {
     case "bet_medal":
     case "vt_badge":
-      return (
-        <g
-          className="filter drop-shadow-[0_8px_18px_rgba(245,158,11,0.65)] origin-[140px_230px]"
-          style={{
-            animation: isGoalAchievedCelebration
-              ? "medalEntranceScaleIn 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards"
-              : undefined,
-          }}
-        >
-          {/* Goal Achieved Radiant Aura Burst */}
-          {isGoalAchievedCelebration && (
-            <g className="origin-[140px_226px] pointer-events-none">
-              <circle
-                cx="140"
-                cy="226"
-                r="26"
-                fill="none"
-                stroke="#fde047"
-                strokeWidth="3.5"
-                opacity="0.85"
-                style={{ animation: "medalAuraBurst 1.2s ease-out infinite" }}
-              />
-              <circle
-                cx="140"
-                cy="226"
-                r="36"
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-                opacity="0.65"
-                style={{ animation: "medalAuraBurst 1.5s ease-out 0.25s infinite" }}
-              />
-            </g>
-          )}
-
-          {/* Blue Neck Ribbon */}
-          <path
-            d="M 106 188 Q 140 218 174 188"
-            stroke="#1d4ed8"
-            strokeWidth="8"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M 106 188 Q 140 218 174 188"
-            stroke="#fde047"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            fill="none"
-          />
-
-          {/* Golden Disc */}
-          <circle cx="140" cy="226" r="21" fill="url(#goldMedalMaster3D)" stroke="#854d0e" strokeWidth="2.5" />
-          <circle cx="140" cy="226" r="17" fill="none" stroke="#ca8a04" strokeWidth="1.8" strokeDasharray="3 2" />
-          <circle cx="140" cy="226" r="15.5" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.6" />
-
-          {/* Engraved Bold VT Monogram */}
-          <text
-            x="140"
-            y="233"
-            textAnchor="middle"
-            fill="#713f12"
-            fontSize="14"
-            fontWeight="900"
-            fontFamily="system-ui, -apple-system, sans-serif"
-            letterSpacing="1px"
-            style={{ filter: "drop-shadow(0 1px 1px rgba(255,255,255,0.7))" }}
-          >
-            VT
-          </text>
-
-          {/* Glint */}
-          <g
-            className="origin-[153px_215px]"
-            style={{ animation: "medalStarGlint 3.2s ease-in-out infinite" }}
-          >
-            <polygon
-              points="153,209 155,213 159,215 155,217 153,221 151,217 147,215 151,213"
-              fill="#ffffff"
-              stroke="#fde047"
-              strokeWidth="0.8"
-            />
-          </g>
-        </g>
-      );
+      return renderMedalsOverlay(CURRENT_AVATAR_MEDALS, isGoalAchievedCelebration);
 
     case "graduation_cap":
       return (
@@ -981,6 +1219,7 @@ function renderCharacterSVG({
   isGoalAchievedCelebration = false,
   idleHeadAngle = 0,
   onMascotClick,
+  mouseOffset,
 }: CharacterRenderProps) {
   const isLoving = emotion === "loving";
   const isHappy = emotion === "alegre" || emotion === "celebrating" || emotion === "encouraging" || isLoving;
@@ -1091,6 +1330,9 @@ function renderCharacterSVG({
           isListening={isListening}
           headTilt={idleHeadAngle}
           onTap={onMascotClick}
+          accessory={config.accessory}
+          renderAccessoryOverlay={renderAccessoryOverlay}
+          mouseOffset={mouseOffset}
         />
       );
 

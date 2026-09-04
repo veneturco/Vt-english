@@ -141,63 +141,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Consolidated Tools & Tutor Pill */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Seasonal / Holiday Theme Switcher Button */}
-          {onOpenSeasonalTheme && seasonalThemeConfig && (
+          {/* Quick Tools Drawer Trigger */}
+          {onOpenToolsDrawer && (
             <button
-              id="nav-seasonal-theme-button"
-              onClick={onOpenSeasonalTheme}
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition"
-              style={{
-                backgroundColor: "rgba(15, 23, 42, 0.85)",
-                borderColor: seasonalThemeConfig.cssVars?.accentColor || "#fbbf24",
-                color: seasonalThemeConfig.cssVars?.accentColor || "#fbbf24",
-                boxShadow: `0 0 12px ${seasonalThemeConfig.cssVars?.accentGlow || "rgba(251,191,36,0.2)"}`,
-              }}
-              title="Ajustar Motor de Tema Estacional & Calendario"
+              id="nav-tools-drawer-button"
+              onClick={onOpenToolsDrawer}
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950/90 hover:bg-slate-900 text-slate-300 hover:text-white border-2 border-b-4 border-slate-800 hover:border-slate-700 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-bold shadow-sm transition"
+              title="Herramientas de Aprendizaje y Práctica"
             >
-              <span>{seasonalThemeConfig.icon}</span>
-              <span className="hidden md:inline">{seasonalThemeConfig.seasonLabel}</span>
-            </button>
-          )}
-
-          {/* SRS Flashcards Review Pill */}
-          {onOpenSRSFlashcards && (
-            <button
-              onClick={onOpenSRSFlashcards}
-              className="flex items-center gap-1 px-2.5 py-1 sm:py-1.5 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-2 border-b-4 border-purple-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition"
-              title="Repaso Espaciado SM-2 (Flashcards de Vocabulario)"
-            >
-              <Brain className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Repaso</span>
-              {dueCardsCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] flex items-center justify-center font-black">
-                  {dueCardsCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Weekly League Leaderboard */}
-          {onOpenLeaderboard && (
-            <button
-              onClick={onOpenLeaderboard}
-              className="flex items-center gap-1 px-2.5 py-1 sm:py-1.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition"
-              title="Liga Semanal de Clasificación"
-            >
-              <Trophy className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-              <span className="hidden sm:inline">Liga</span>
-            </button>
-          )}
-
-          {/* Weekly Progress Analytics */}
-          {onOpenProgressDashboard && (
-            <button
-              onClick={onOpenProgressDashboard}
-              className="flex items-center gap-1 px-2.5 py-1 sm:py-1.5 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border-2 border-b-4 border-sky-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-black shadow-sm transition"
-              title="Progreso y Minutos Hablados"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-sky-400" />
-              <span className="hidden sm:inline">Progreso</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">Herramientas</span>
             </button>
           )}
 
@@ -218,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="nav-avatar-customizer-button"
             onClick={onOpenAvatarCustomizer}
             className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-300 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-[11px] sm:text-xs font-bold shadow-sm transition"
-            title="Cambiar Tutor o Subir Foto HD"
+            title="Cambiar Tutor o Personalizar"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden xs:inline">Tutores</span>

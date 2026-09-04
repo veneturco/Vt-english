@@ -94,7 +94,19 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
   const handleSelectPreset = (presetKey: AvatarModelPreset) => {
     const preset = AVATAR_PRESETS[presetKey];
     if (preset) {
-      setTempConfig({ ...preset, customImageUrl: tempConfig.customImageUrl });
+      if (preset.customGlbUrl) {
+        setTempConfig({
+          ...preset,
+          customImageUrl: undefined,
+        });
+      } else {
+        setTempConfig({
+          ...preset,
+          customImageUrl: tempConfig.customImageUrl,
+          customGlbUrl: undefined,
+          customGlbName: undefined,
+        });
+      }
     }
   };
 
@@ -375,7 +387,7 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                       🌟 Modelo 3D (.GLB) o Ilustración HD
                     </h4>
                     <p className="text-xs text-slate-300">
-                      Sube tu modelo 3D descargado de Meshy (.GLB) para Three.js real, o tu imagen HD para el avatar.
+                      Sube tu modelo 3D descargado (.GLB) para Three.js real, o tu imagen HD para el avatar.
                     </p>
                   </div>
                 </div>
@@ -389,6 +401,50 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                     <span>Quitar {tempConfig.customGlbUrl ? "Modelo 3D" : "Foto HD"}</span>
                   </button>
                 )}
+              </div>
+
+              {/* Shiba Inu 3D Model Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/10 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-2xl shrink-0 shadow-lg">
+                    🐕
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-white">
+                        Modelo 3D Oficial: Shiba Inu (shiba.glb)
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                        Three.js 3D Real
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Ubicado en <code className="text-amber-300 font-mono text-[11px] bg-black/40 px-1 py-0.5 rounded">public/assets/avatars/shiba.glb</code> con iluminación de estudio, plataforma y rotación 360°.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempConfig((prev) => ({
+                      ...prev,
+                      ...AVATAR_PRESETS.shiba_inu,
+                      preset: "shiba_inu",
+                      customGlbUrl: "/assets/avatars/shiba.glb",
+                      customGlbName: "shiba.glb",
+                      avatarType: "custom_glb",
+                      glbRotationY: Math.PI,
+                    }));
+                  }}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 shrink-0 shadow-md active:scale-95 ${
+                    tempConfig.customGlbUrl === "/assets/avatars/shiba.glb" || tempConfig.preset === "shiba_inu"
+                      ? "bg-amber-500 text-slate-950 ring-2 ring-amber-300 shadow-amber-500/30"
+                      : "bg-amber-600 hover:bg-amber-500 text-white"
+                  }`}
+                >
+                  <span>{tempConfig.customGlbUrl === "/assets/avatars/shiba.glb" || tempConfig.preset === "shiba_inu" ? "✓ Activado" : "🐕 Activar Shiba Inu 3D"}</span>
+                </button>
               </div>
 
               {/* Upload Zone & File Dropper */}
@@ -556,6 +612,270 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                 </div>
               )}
 
+              {/* 3D GLB Mouth & Snout Calibration Controls */}
+              {tempConfig.customGlbUrl && (
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/40 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">👄</span>
+                      <div>
+                        <h5 className="text-xs sm:text-sm font-bold text-white">
+                          Calibración de Boca y Distancias 3D (.GLB)
+                        </h5>
+                        <p className="text-[11px] text-slate-400">
+                          Ajusta la posición frontal (Z), altura (Y), centrado (X), escala y apertura al hablar para que coincida exactamente con el hocico.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-300 font-semibold bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={tempConfig.glbMouthEnabled ?? true}
+                          onChange={(e) =>
+                            setTempConfig((prev) => ({
+                              ...prev,
+                              glbMouthEnabled: e.target.checked,
+                            }))
+                          }
+                          className="accent-amber-500 rounded"
+                        />
+                        <span>Visible</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleTestAudio}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5 active:scale-95 shrink-0"
+                      >
+                        <span>🎙️</span>
+                        <span>Probar Habla</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Calibration Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Calibración Rápida:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTempConfig((prev) => ({
+                          ...prev,
+                          glbMouthX: 0,
+                          glbMouthY: 0.94,
+                          glbMouthZ: 0.62,
+                          glbMouthScale: 1.0,
+                          glbMouthOpenDist: 0.08,
+                          glbMouthType: "shiba_snout",
+                          glbMouthEnabled: true,
+                        }))
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1"
+                    >
+                      <span>🐕</span>
+                      <span>Alinear con Hocico de Shiba Inu</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTempConfig((prev) => ({
+                          ...prev,
+                          glbMouthX: 0,
+                          glbMouthY: 1.45,
+                          glbMouthZ: 0.42,
+                          glbMouthScale: 1.0,
+                          glbMouthOpenDist: 0.08,
+                          glbMouthType: "avian_beak",
+                          glbMouthEnabled: true,
+                        }))
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-semibold transition flex items-center gap-1"
+                    >
+                      <span>🐤</span>
+                      <span>Alinear con Pico de Búho/Ave</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTempConfig((prev) => ({
+                          ...prev,
+                          glbMouthType: "kinetic_bounce",
+                        }))
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition"
+                    >
+                      ⚡ Solo Rebote Kinemático
+                    </button>
+                  </div>
+
+                  {/* Sliders Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-xs">
+                    {/* Distancia Frontal / Profundidad Z */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-slate-400 font-semibold text-[11px]">
+                        <span>Distancia Frontal (Z):</span>
+                        <span className="text-amber-400 font-mono">
+                          {(tempConfig.glbMouthZ ?? 0.62).toFixed(2)}m
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.10"
+                        max="1.30"
+                        step="0.01"
+                        value={tempConfig.glbMouthZ ?? 0.62}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthZ: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500">
+                        <span>Atrás (Cráneo)</span>
+                        <span>Adelante (Punta Hocico)</span>
+                      </div>
+                    </div>
+
+                    {/* Altura Y */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-slate-400 font-semibold text-[11px]">
+                        <span>Altura de la Boca (Y):</span>
+                        <span className="text-amber-400 font-mono">
+                          {(tempConfig.glbMouthY ?? 0.94).toFixed(2)}m
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.40"
+                        max="1.90"
+                        step="0.01"
+                        value={tempConfig.glbMouthY ?? 0.94}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthY: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500">
+                        <span>Abajo</span>
+                        <span>Arriba</span>
+                      </div>
+                    </div>
+
+                    {/* Centrado Horizontal X */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-slate-400 font-semibold text-[11px]">
+                        <span>Centrado Lateral (X):</span>
+                        <span className="text-amber-400 font-mono">
+                          {(tempConfig.glbMouthX ?? 0).toFixed(2)}m
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-0.40"
+                        max="0.40"
+                        step="0.01"
+                        value={tempConfig.glbMouthX ?? 0}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthX: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500">
+                        <span>Izquierda</span>
+                        <span>Derecha</span>
+                      </div>
+                    </div>
+
+                    {/* Tamaño / Escala */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-slate-400 font-semibold text-[11px]">
+                        <span>Tamaño de Boca / Hocico:</span>
+                        <span className="text-amber-400 font-mono">
+                          {(tempConfig.glbMouthScale ?? 1.0).toFixed(2)}x
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.30"
+                        max="2.50"
+                        step="0.05"
+                        value={tempConfig.glbMouthScale ?? 1.0}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthScale: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500">
+                        <span>Pequeño</span>
+                        <span>Grande</span>
+                      </div>
+                    </div>
+
+                    {/* Amplitud de Apertura al Hablar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-slate-400 font-semibold text-[11px]">
+                        <span>Distancia Apertura al Hablar:</span>
+                        <span className="text-amber-400 font-mono">
+                          {(tempConfig.glbMouthOpenDist ?? 0.08).toFixed(2)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.02"
+                        max="0.22"
+                        step="0.01"
+                        value={tempConfig.glbMouthOpenDist ?? 0.08}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthOpenDist: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500">
+                        <span>Sutil</span>
+                        <span>Amplia</span>
+                      </div>
+                    </div>
+
+                    {/* Tipo de Fisiología 3D */}
+                    <div className="space-y-1">
+                      <div className="text-slate-400 font-semibold text-[11px]">
+                        Fisiología Bucal 3D:
+                      </div>
+                      <select
+                        value={tempConfig.glbMouthType ?? "shiba_snout"}
+                        onChange={(e) =>
+                          setTempConfig((prev) => ({
+                            ...prev,
+                            glbMouthType: e.target.value as any,
+                          }))
+                        }
+                        className="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="shiba_snout">🐕 Hocico Canino & Lengua (Shiba)</option>
+                        <option value="avian_beak">🐤 Pico de Ave Articulado 3D</option>
+                        <option value="kinetic_bounce">⚡ Kinematic Cranial Bounce</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 3x3 Collage Character Auto-Cropper Selector */}
               {tempConfig.customImageUrl && (
                 <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
@@ -623,14 +943,24 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                           Ajustes de Calibración de la Boca 2.5D
                         </h6>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleTestAudio}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5"
-                      >
-                        <span>🎙️</span>
-                        <span>Probar Movimiento de Boca</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsCalibratorOpen(true)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-semibold text-xs transition flex items-center gap-1.5"
+                        >
+                          <span>🎛️</span>
+                          <span>Calibrador 2.5D</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTestAudio}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5"
+                        >
+                          <span>🎙️</span>
+                          <span>Probar Movimiento</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs">
@@ -1151,13 +1481,23 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
 
         {/* Modal Footer Controls */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-slate-800 bg-[#0d1117]/90">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Restablecer a Turpial BET</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Restablecer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCalibratorOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1"
+            >
+              <span>🎛️</span>
+              <span>Calibrador 2.5D</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             <button

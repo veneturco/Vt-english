@@ -294,15 +294,31 @@ export class AvianRigController {
   private wingLeftNode: THREE.Object3D | null = null;
   private wingRightNode: THREE.Object3D | null = null;
 
-  // Procedural Avian Mandible for monolithic models
+  // Procedural Avian Mandible & 3D Mouth for monolithic models
   private proceduralMandible: THREE.Mesh | null = null;
   private proceduralEyelids: THREE.Mesh[] = [];
+
+  // 3D Mouth Calibration & Procedural Articulation
+  public mouthOffsets = {
+    x: 0,
+    y: 0.94,
+    z: 0.62,
+    scale: 1.0,
+    openDist: 0.08,
+    type: "shiba_snout" as "shiba_snout" | "avian_beak" | "kinetic_bounce",
+    enabled: true,
+  };
+  private proceduralMouthGroup: THREE.Group | null = null;
+  private proceduralUpperLip: THREE.Mesh | null = null;
+  private proceduralLowerLip: THREE.Mesh | null = null;
+  private proceduralTongue: THREE.Mesh | null = null;
 
   // Morph Target References
   private mouthMorphMeshes: { mesh: THREE.Mesh; targetIndex: number }[] = [];
   private blinkMorphMeshes: { mesh: THREE.Mesh; targetIndex: number }[] = [];
 
   // State
+  public baseScale = 1.0;
   private blinkTimer = 0;
   private nextBlinkInterval = 3.5;
   private isBlinking = false;
@@ -326,22 +342,24 @@ export class AvianRigController {
 
   private setupAnatomy(gltf: GLTF) {
     // 1. Auto-Center and Standardize Model Scale & Shadows
-    const box = new THREE.Box3().setFromObject(this.rootObject);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
+    const targetHeight = 1.65;
+    const initialBox = new THREE.Box3().setFromObject(this.rootObject);
+    const initialSize = new THREE.Vector3();
+    initialBox.getSize(initialSize);
+    const maxDim = Math.max(0.1, initialSize.y, initialSize.x * 0.75, initialSize.z * 0.75);
+    this.baseScale = targetHeight / maxDim;
+    this.rootObject.scale.setScalar(this.baseScale);
+    this.rootObject.updateMatrixWorld(true);
 
-    // Center model at bottom pivot
-    this.rootObject.position.x -= center.x;
-    this.rootObject.position.y -= box.min.y;
-    this.rootObject.position.z -= center.z;
+    const scaledBox = new THREE.Box3().setFromObject(this.rootObject);
+    const scaledCenter = new THREE.Vector3();
+    scaledBox.getCenter(scaledCenter);
 
-    // Normalize scale so height is around 2.4 units in scene
-    const targetHeight = 2.4;
-    const currentHeight = Math.max(0.1, size.y);
-    const scaleFactor = targetHeight / currentHeight;
-    this.rootObject.scale.multiplyScalar(scaleFactor);
+    // Center model at bottom pivot on stage
+    this.rootObject.position.x -= scaledCenter.x;
+    this.rootObject.position.y -= scaledBox.min.y;
+    this.rootObject.position.z -= scaledCenter.z;
+    this.rootObject.updateMatrixWorld(true);
 
     // 2. Discover Nodes & Morph Targets
     this.rootObject.traverse((node) => {
@@ -418,36 +436,139 @@ export class AvianRigController {
       this.initialHeadRot.copy(this.headNode.rotation);
     }
 
-    // Fallback: If no beak node and no mouth morph targets, inject procedural avian beak articulator
+    // Fallback: If no beak node and no mouth morph targets, inject procedural 3D mouth articulator
     if (!this.beakNode && this.mouthMorphMeshes.length === 0) {
-      this.createProceduralAvianMandible();
+      this.buildProceduralMouth();
     }
   }
 
   /**
-   * Creates a beautifully crafted procedural lower beak/mandible for monolithic bird models,
-   * perfectly tuned for owl professors with matching golden/amber horn material.
+   * Builds an articulated 3D mouth or beak for monolithic models (like Shiba Inu or Owl)
+   * that can be calibrated in position X/Y/Z, scale, and speech opening amplitude.
    */
-  private createProceduralAvianMandible() {
-    const beakGeom = new THREE.ConeGeometry(0.12, 0.22, 5);
-    beakGeom.rotateX(Math.PI / 2);
-    beakGeom.scale(1.1, 0.6, 1.0);
+  public buildProceduralMouth() {
+    if (this.proceduralMouthGroup) {
+      this.rootObject.remove(this.proceduralMouthGroup);
+      this.proceduralMouthGroup = null;
+      this.proceduralUpperLip = null;
+      this.proceduralLowerLip = null;
+      this.proceduralTongue = null;
+    }
 
-    const beakMat = new THREE.MeshStandardMaterial({
-      color: 0xdf8a1a,
-      roughness: 0.35,
-      metalness: 0.1,
-      name: "Avian_Procedural_Mandible_Mat",
-    });
+    const group = new THREE.Group();
+    group.name = "Avian_Procedural_3D_Mouth_Group";
 
-    const mandible = new THREE.Mesh(beakGeom, beakMat);
-    mandible.name = "Avian_Procedural_Mandible";
-    mandible.castShadow = true;
-    mandible.position.set(0, 1.45, 0.42);
-    mandible.visible = false; // Kept ready if needed or attached to head
+    if (this.mouthOffsets.type === "avian_beak") {
+      // Procedural Avian Beak
+      const beakMat = new THREE.MeshStandardMaterial({
+        color: 0xdf8a1a,
+        roughness: 0.35,
+        metalness: 0.1,
+      });
 
-    this.rootObject.add(mandible);
-    this.proceduralMandible = mandible;
+      // Upper Beak
+      const upperGeom = new THREE.ConeGeometry(0.12, 0.22, 5);
+      upperGeom.rotateX(Math.PI / 2);
+      upperGeom.scale(1.0, 0.5, 1.0);
+      const upperMesh = new THREE.Mesh(upperGeom, beakMat);
+      upperMesh.castShadow = true;
+      group.add(upperMesh);
+      this.proceduralUpperLip = upperMesh;
+
+      // Lower Beak (Articulated Mandible)
+      const lowerGeom = new THREE.ConeGeometry(0.10, 0.18, 5);
+      lowerGeom.rotateX(Math.PI / 2);
+      lowerGeom.scale(0.95, 0.4, 0.95);
+      const lowerMesh = new THREE.Mesh(lowerGeom, beakMat);
+      lowerMesh.position.set(0, -0.04, 0.01);
+      lowerMesh.castShadow = true;
+      group.add(lowerMesh);
+      this.proceduralLowerLip = lowerMesh;
+    } else {
+      // Canine / Animal Snout (Shiba Inu)
+      // Dark leather muzzle & nose
+      const noseMat = new THREE.MeshStandardMaterial({
+        color: 0x1e1b18,
+        roughness: 0.5,
+        metalness: 0.1,
+      });
+
+      // Upper Lip / Nose tip
+      const upperGeom = new THREE.SphereGeometry(0.045, 12, 12);
+      upperGeom.scale(1.2, 0.75, 1.0);
+      const upperMesh = new THREE.Mesh(upperGeom, noseMat);
+      upperMesh.position.set(0, 0.02, 0);
+      upperMesh.castShadow = true;
+      group.add(upperMesh);
+      this.proceduralUpperLip = upperMesh;
+
+      // Lower Jaw / Lip (drops when speaking)
+      const lowerGeom = new THREE.SphereGeometry(0.038, 12, 10);
+      lowerGeom.scale(1.1, 0.5, 0.9);
+      const lowerMesh = new THREE.Mesh(lowerGeom, noseMat);
+      lowerMesh.position.set(0, -0.03, -0.01);
+      lowerMesh.castShadow = true;
+      group.add(lowerMesh);
+      this.proceduralLowerLip = lowerMesh;
+
+      // Pink Tongue inside
+      const tongueMat = new THREE.MeshStandardMaterial({
+        color: 0xf472b6,
+        roughness: 0.4,
+        metalness: 0.05,
+      });
+      const tongueGeom = new THREE.SphereGeometry(0.026, 10, 8);
+      tongueGeom.scale(1.0, 0.35, 1.2);
+      const tongueMesh = new THREE.Mesh(tongueGeom, tongueMat);
+      tongueMesh.position.set(0, -0.02, 0.01);
+      group.add(tongueMesh);
+      this.proceduralTongue = tongueMesh;
+    }
+
+    group.position.set(this.mouthOffsets.x, this.mouthOffsets.y, this.mouthOffsets.z);
+    group.scale.setScalar(this.mouthOffsets.scale);
+    group.visible = this.mouthOffsets.enabled && this.mouthOffsets.type !== "kinetic_bounce";
+
+    this.rootObject.add(group);
+    this.proceduralMouthGroup = group;
+  }
+
+  /**
+   * Live calibration of 3D mouth position, distances, and scale
+   */
+  public setMouthOffsets(offsets: {
+    x?: number;
+    y?: number;
+    z?: number;
+    scale?: number;
+    openDist?: number;
+    type?: "shiba_snout" | "avian_beak" | "kinetic_bounce";
+    enabled?: boolean;
+  }) {
+    let typeChanged = false;
+    if (offsets.x !== undefined) this.mouthOffsets.x = offsets.x;
+    if (offsets.y !== undefined) this.mouthOffsets.y = offsets.y;
+    if (offsets.z !== undefined) this.mouthOffsets.z = offsets.z;
+    if (offsets.scale !== undefined) this.mouthOffsets.scale = offsets.scale;
+    if (offsets.openDist !== undefined) this.mouthOffsets.openDist = offsets.openDist;
+    if (offsets.type !== undefined && offsets.type !== this.mouthOffsets.type) {
+      this.mouthOffsets.type = offsets.type;
+      typeChanged = true;
+    }
+    if (offsets.enabled !== undefined) this.mouthOffsets.enabled = offsets.enabled;
+
+    if (typeChanged || !this.proceduralMouthGroup) {
+      this.buildProceduralMouth();
+    } else if (this.proceduralMouthGroup) {
+      this.proceduralMouthGroup.position.set(
+        this.mouthOffsets.x,
+        this.mouthOffsets.y,
+        this.mouthOffsets.z
+      );
+      this.proceduralMouthGroup.scale.setScalar(this.mouthOffsets.scale);
+      this.proceduralMouthGroup.visible =
+        this.mouthOffsets.enabled && this.mouthOffsets.type !== "kinetic_bounce";
+    }
   }
 
   /**
@@ -559,23 +680,41 @@ export class AvianRigController {
       this.beakNode.rotation.x += (targetBeakX - this.beakNode.rotation.x) * delta * 20;
     }
 
-    // Tier 3: Whole Head & Mandible Modulation for Monolithic Models
+    // Tier 3: Whole Head & Procedural 3D Mouth for Monolithic Models
     if (this.mouthMorphMeshes.length === 0 && !this.beakNode) {
       // Dynamic Speech Micro-Flap on the cranial front
       if (this.headNode && this.smoothedMouthIntensity > 0.05) {
         this.headNode.position.y = Math.sin(elapsedTime * 16) * 0.015 * this.smoothedMouthIntensity;
       }
+
+      // Articulate 3D Procedural Mouth / Snout
+      if (
+        this.proceduralMouthGroup &&
+        this.mouthOffsets.enabled &&
+        this.mouthOffsets.type !== "kinetic_bounce"
+      ) {
+        const openAmount = this.smoothedMouthIntensity * (this.mouthOffsets.openDist || 0.08);
+
+        if (this.proceduralLowerLip) {
+          this.proceduralLowerLip.position.y = -0.03 - openAmount;
+          this.proceduralLowerLip.rotation.x = this.smoothedMouthIntensity * 0.35;
+        }
+        if (this.proceduralTongue) {
+          this.proceduralTongue.position.y = -0.02 - openAmount * 0.45;
+          this.proceduralTongue.scale.z = 1.2 + this.smoothedMouthIntensity * 0.4;
+        }
+      }
     }
 
-    // 6. Avian Organic Breathing & Idle Physics (Squash & Stretch)
+    // 6. Organic Breathing & Idle Physics (Squash & Stretch)
     const breathFreq = 1.6;
     const breathAmp = 0.018;
     const breath = Math.sin(elapsedTime * breathFreq) * breathAmp;
 
     // Volume-preserving squash & stretch: when Y expands, X and Z contract slightly
-    this.rootObject.scale.y = (1.0 + breath);
-    this.rootObject.scale.x = (1.0 - breath * 0.45);
-    this.rootObject.scale.z = (1.0 - breath * 0.45);
+    this.rootObject.scale.y = this.baseScale * (1.0 + breath);
+    this.rootObject.scale.x = this.baseScale * (1.0 - breath * 0.45);
+    this.rootObject.scale.z = this.baseScale * (1.0 - breath * 0.45);
 
     // Perching sway
     this.rootObject.position.y += (Math.sin(elapsedTime * 0.8) * 0.008 - this.rootObject.position.y * 0.05) * delta;

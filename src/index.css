@@ -65,15 +65,62 @@
   background: #30363d;
 }
 
-/* Pixar & PBR-style Dynamic Key & Bounce Light Shader for #avatar-stage */
+/* Dynamic Microphone Volume, Acoustic Color Hue Shader & Interactive Mouse Lighting for #avatar-stage */
 #avatar-stage {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  align-items: center;
+  grid-template-rows: auto minmax(200px, 1fr) auto;
   --mouth-intensity: 0;
+  --mic-volume: 0;
+  --stage-bg-hue: 222deg;
+  --stage-bg-opacity: 0.92;
+  --stage-mouse-x: 0;
+  --stage-mouse-y: 0;
+  --stage-mouse-px: 50%;
+  --stage-mouse-py: 50%;
+  background-color: hsla(
+    var(--stage-bg-hue, 222deg),
+    calc(42% + var(--mic-volume, 0) * 18%),
+    calc(8% + var(--mic-volume, 0) * 5%),
+    var(--stage-bg-opacity, 0.92)
+  );
+  background-image: radial-gradient(
+    ellipse 90% 75% at var(--stage-mouse-px, 50%) var(--stage-mouse-py, 50%),
+    hsla(
+      calc(var(--stage-bg-hue, 222deg) + 14deg),
+      calc(46% + var(--mic-volume, 0) * 26%),
+      calc(11% + var(--mic-volume, 0) * 12%),
+      calc(0.20 + var(--mic-volume, 0) * 0.55)
+    ) 0%,
+    hsla(
+      var(--stage-bg-hue, 222deg),
+      calc(40% + var(--mic-volume, 0) * 15%),
+      calc(8% + var(--mic-volume, 0) * 4%),
+      var(--stage-bg-opacity, 0.92)
+    ) 100%
+  );
   contain: layout paint;
-  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, background-color 0.16s ease-out, background-image 0.16s ease-out;
+  transform-origin: center center;
+  will-change: transform, background-color, background-image;
+}
+
+#avatar-stage > header {
+  align-self: start;
+}
+
+#avatar-stage > main {
+  height: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  flex: 1 1 auto;
+}
+
+#avatar-stage > footer {
+  align-self: end;
 }
 
 /* Soft, organic breathing border & aura pulse when tutor is actively speaking */
@@ -82,22 +129,22 @@
     border-color: rgba(245, 158, 11, 0.45);
     box-shadow: 
       0 0 0 1px rgba(245, 158, 11, 0.25),
-      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25)),
-      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.2));
+      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25 + var(--mic-volume, 0) * 0.15)),
+      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.20 + var(--mic-volume, 0) * 0.12));
   }
   50% {
     border-color: rgba(251, 191, 36, 0.85);
     box-shadow: 
       0 0 0 2px rgba(251, 191, 36, 0.5),
-      0 0 24px rgba(251, 191, 36, calc(0.35 + var(--mouth-intensity, 0) * 0.35)),
-      0 0 48px rgba(245, 158, 11, calc(0.2 + var(--mouth-intensity, 0) * 0.25));
+      0 0 24px rgba(251, 191, 36, calc(0.35 + var(--mouth-intensity, 0) * 0.35 + var(--mic-volume, 0) * 0.20)),
+      0 0 48px rgba(245, 158, 11, calc(0.20 + var(--mouth-intensity, 0) * 0.25 + var(--mic-volume, 0) * 0.15));
   }
   100% {
     border-color: rgba(245, 158, 11, 0.45);
     box-shadow: 
       0 0 0 1px rgba(245, 158, 11, 0.25),
-      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25)),
-      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.2));
+      0 0 16px rgba(245, 158, 11, calc(0.15 + var(--mouth-intensity, 0) * 0.25 + var(--mic-volume, 0) * 0.15)),
+      0 0 32px rgba(234, 179, 8, calc(0.08 + var(--mouth-intensity, 0) * 0.20 + var(--mic-volume, 0) * 0.12));
   }
 }
 
@@ -114,15 +161,15 @@
   z-index: 15;
   background: radial-gradient(
     ellipse 85% 75% at 78% 18%,
-    rgba(255, 255, 255, calc(0.38 + var(--mouth-intensity, 0) * 0.45)) 0%,
-    rgba(254, 240, 138, calc(0.26 + var(--mouth-intensity, 0) * 0.38)) 18%,
-    rgba(251, 191, 36, calc(0.18 + var(--mouth-intensity, 0) * 0.28)) 38%,
-    rgba(245, 158, 11, calc(0.10 + var(--mouth-intensity, 0) * 0.20)) 58%,
-    rgba(217, 119, 6, calc(0.04 + var(--mouth-intensity, 0) * 0.12)) 72%,
+    rgba(255, 255, 255, calc(0.38 + var(--mouth-intensity, 0) * 0.45 + var(--mic-volume, 0) * 0.20)) 0%,
+    rgba(254, 240, 138, calc(0.26 + var(--mouth-intensity, 0) * 0.38 + var(--mic-volume, 0) * 0.18)) 18%,
+    rgba(251, 191, 36, calc(0.18 + var(--mouth-intensity, 0) * 0.28 + var(--mic-volume, 0) * 0.14)) 38%,
+    rgba(245, 158, 11, calc(0.10 + var(--mouth-intensity, 0) * 0.20 + var(--mic-volume, 0) * 0.10)) 58%,
+    rgba(217, 119, 6, calc(0.04 + var(--mouth-intensity, 0) * 0.12 + var(--mic-volume, 0) * 0.06)) 72%,
     transparent 88%
   );
   mix-blend-mode: color-dodge;
-  opacity: 0.92;
+  opacity: calc(0.90 + var(--mic-volume, 0) * 0.10);
   transition: opacity 0.1s ease-out, background 0.08s ease-out;
 }
 

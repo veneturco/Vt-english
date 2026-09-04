@@ -16,6 +16,7 @@ export interface LevelInfo {
 }
 
 export type AvatarModelPreset =
+  | "shiba_inu"
   | "bet_turpial"
   | "mario_hero"
   | "luigi_hero"
@@ -78,6 +79,13 @@ export interface AvatarConfig {
   customGlbUrl?: string;
   customGlbName?: string;
   glbRotationY?: number; // Custom rotation offset in radians or degrees
+  glbMouthX?: number; // 3D X offset (-1.0 to 1.0)
+  glbMouthY?: number; // 3D Y offset (0.0 to 2.5)
+  glbMouthZ?: number; // 3D Z offset / distance forwards (-1.0 to 1.0)
+  glbMouthScale?: number; // 3D Mouth scale (0.2 to 2.5)
+  glbMouthOpenDist?: number; // 3D Mouth opening distance / amplitude (0.01 to 0.3)
+  glbMouthType?: "shiba_snout" | "avian_beak" | "kinetic_bounce";
+  glbMouthEnabled?: boolean;
   spriteCropIndex?: number; // 0 to 9 for collage auto-crop
   rigMouthX?: number; // percentage 0-100
   rigMouthY?: number; // percentage 0-100

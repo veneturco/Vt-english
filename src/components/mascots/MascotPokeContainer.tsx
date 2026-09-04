@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useAnimation } from "motion/react";
 import { soundFx } from "../../utils/soundFx";
 import { haptics } from "../../utils/haptics";
+import { isMascotBodyElement } from "../../utils/avatarBodyDetection";
+
+type MascotAnimationControls = ReturnType<typeof useAnimation>;
 
 interface PokeParticle {
   id: number;
@@ -11,11 +14,13 @@ interface PokeParticle {
   emoji: string;
 }
 
-interface MascotPokeContainerProps {
+export interface MascotPokeContainerProps {
   children: React.ReactNode;
   preset?: string;
-  onPoke?: () => void;
+  onPoke?: (contactPoint?: { clientX: number; clientY: number }) => void;
   className?: string;
+  controls?: MascotAnimationControls;
+  mousePos?: { x: number; y: number };
 }
 
 const POKE_MESSAGES = [
@@ -33,22 +38,64 @@ export const MascotPokeContainer: React.FC<MascotPokeContainerProps> = ({
   preset = "bet_turpial",
   onPoke,
   className = "",
+  controls: externalControls,
+  mousePos,
 }) => {
-  const [pokeKey, setPokeKey] = useState(0);
+  // Framer Motion animation controls for conditional squish & stretch
+  const internalSquishControls = useAnimation();
+  const squishControls = externalControls || internalSquishControls;
+  const shadowControls = useAnimation();
+
   const [particles, setParticles] = useState<PokeParticle[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Triggers the organic squish & stretch physics animation via useAnimation
+   */
+  const triggerSquishAnimation = useCallback(() => {
+    squishControls.start({
+      scaleX: [1, 1.32, 0.76, 1.18, 0.9, 1.06, 0.98, 1],
+      scaleY: [1, 0.68, 1.28, 0.86, 1.12, 0.95, 1.02, 1],
+      y: [0, 10, -18, 8, -4, 2, 0],
+      rotate: [0, -5, 5, -3, 2, -1, 0],
+      transition: {
+        duration: 0.7,
+        ease: "easeOut",
+        times: [0, 0.14, 0.32, 0.5, 0.68, 0.82, 0.92, 1],
+      },
+    });
+
+    shadowControls.start({
+      scaleX: [1, 1.45, 0.7, 1.2, 0.9, 1.05, 1],
+      scaleY: [1, 1.3, 0.6, 1.15, 0.85, 1],
+      opacity: [0.6, 0.9, 0.35, 0.75, 0.5, 0.6],
+      transition: {
+        duration: 0.65,
+        ease: "easeOut",
+        times: [0, 0.16, 0.36, 0.56, 0.75, 0.9, 1],
+      },
+    });
+  }, [squishControls, shadowControls]);
+
   const handlePoke = useCallback(
     (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-      // Prevent double triggers if bubbling
+      // CONDITIONAL POKE INTERACTION:
+      // Check if the clicked target specifically detects the mascot body component.
+      // If the background of the stage was clicked/touched accidentally, ignore!
+      const target = (e.target as HTMLElement | SVGElement) || null;
+      if (!isMascotBodyElement(target)) {
+        return;
+      }
+
+      // Prevent duplicate bubbles
       e.stopPropagation();
 
       // Trigger audio & tactile haptic squish response
       soundFx.playCharacterStageSound(preset);
       haptics.light();
 
-      // Trigger squash & stretch Framer Motion keyframe cycle
-      setPokeKey((prev) => prev + 1);
+      // Trigger squash & stretch Framer Motion keyframe cycle using useAnimation
+      triggerSquishAnimation();
 
       // Determine click / tap coordinate relative to container for floating particle
       let clientX = 0;
@@ -84,10 +131,10 @@ export const MascotPokeContainer: React.FC<MascotPokeContainerProps> = ({
         }, 900);
       }
 
-      // Propagate poke callback to parent (to trigger expressive reaction states)
-      onPoke?.();
+      // Propagate poke callback to parent (with contact coordinates for transient golden halo)
+      onPoke?.({ clientX, clientY });
     },
-    [preset, onPoke]
+    [preset, onPoke, triggerSquishAnimation]
   );
 
   return (
@@ -95,66 +142,70 @@ export const MascotPokeContainer: React.FC<MascotPokeContainerProps> = ({
       ref={containerRef}
       onClick={handlePoke}
       onTouchStart={handlePoke}
-      className={`relative w-full h-full flex items-center justify-center cursor-pointer select-none overflow-visible group ${className}`}
-      role="button"
-      tabIndex={0}
-      aria-label="Toca el avatar para interactuar"
+      className={`relative w-full h-full flex items-center justify-center select-none overflow-visible group ${className}`}
+      role="region"
+      aria-label="Escenario del avatar interactivo"
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          handlePoke(e as unknown as React.MouseEvent<HTMLDivElement>);
+          // Synthesize keypoke on body
+          triggerSquishAnimation();
+          soundFx.playCharacterStageSound(preset);
+          haptics.light();
+          onPoke?.();
         }
       }}
     >
-      {/* Elastic Squish Shadow Ground Contact */}
+      {/* Elastic Squish Shadow Ground Contact with cursor tracking */}
       <motion.div
-        key={`shadow-${pokeKey}`}
-        className="absolute bottom-2 sm:bottom-4 w-40 sm:w-48 h-6 bg-slate-950/80 blur-md rounded-full pointer-events-none z-0"
-        initial={{ scaleX: 1, scaleY: 1, opacity: 0.6 }}
-        animate={
-          pokeKey > 0
-            ? {
-                scaleX: [1, 1.45, 0.7, 1.2, 0.9, 1.05, 1],
-                scaleY: [1, 1.3, 0.6, 1.15, 0.85, 1],
-                opacity: [0.6, 0.9, 0.35, 0.75, 0.5, 0.6],
-              }
-            : { scaleX: 1, scaleY: 1, opacity: 0.6 }
-        }
-        transition={{
-          duration: 0.65,
-          ease: "easeOut",
-          times: [0, 0.16, 0.36, 0.56, 0.75, 0.9, 1],
+        className="absolute bottom-2 sm:bottom-4 pointer-events-none z-0"
+        animate={{
+          x: mousePos ? mousePos.x * 14 : 0,
         }}
-      />
-
-      {/* Main Mascot Squish & Stretch Physics Wrapper */}
-      <motion.div
-        key={`mascot-squish-${pokeKey}`}
-        className="w-full h-full flex items-center justify-center relative z-10 origin-bottom"
-        whileTap={{
-          scaleX: 1.25,
-          scaleY: 0.72,
-          y: 8,
-          transition: { duration: 0.08 },
-        }}
-        initial={{ scaleX: 1, scaleY: 1, y: 0, rotate: 0 }}
-        animate={
-          pokeKey > 0
-            ? {
-                scaleX: [1, 1.32, 0.76, 1.18, 0.9, 1.06, 0.98, 1],
-                scaleY: [1, 0.68, 1.28, 0.86, 1.12, 0.95, 1.02, 1],
-                y: [0, 10, -18, 8, -4, 2, 0],
-                rotate: [0, -5, 5, -3, 2, -1, 0],
-              }
-            : { scaleX: 1, scaleY: 1, y: 0, rotate: 0 }
-        }
         transition={{
-          duration: 0.7,
-          ease: "easeOut",
-          times: [0, 0.14, 0.32, 0.5, 0.68, 0.82, 0.92, 1],
+          type: "spring",
+          stiffness: 220,
+          damping: 22,
+          mass: 0.6,
         }}
       >
-        {children}
+        <motion.div
+          className="w-40 sm:w-48 h-6 bg-slate-950/80 blur-md rounded-full"
+          initial={{ scaleX: 1, scaleY: 1, opacity: 0.6 }}
+          animate={shadowControls}
+        />
+      </motion.div>
+
+      {/* Main Mascot Container with Interactive 3D Cursor Tracking Parallax */}
+      <motion.div
+        className="w-full h-full flex items-center justify-center relative z-10 origin-bottom"
+        animate={{
+          x: mousePos ? mousePos.x * 18 : 0,
+          y: mousePos ? mousePos.y * 10 : 0,
+          rotateY: mousePos ? mousePos.x * 14 : 0,
+          rotateX: mousePos ? -mousePos.y * 10 : 0,
+          rotateZ: mousePos ? mousePos.x * 2.5 : 0,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 220,
+          damping: 22,
+          mass: 0.6,
+        }}
+        style={{
+          transformStyle: "preserve-3d",
+        }}
+      >
+        {/* Main Mascot Squish & Stretch Physics Wrapper controlled conditionally via useAnimation */}
+        <motion.div
+          data-avatar-body="true"
+          data-mascot-body="true"
+          className="avatar-body-component w-full h-full flex items-center justify-center relative origin-bottom cursor-pointer"
+          initial={{ scaleX: 1, scaleY: 1, y: 0, rotate: 0 }}
+          animate={squishControls}
+        >
+          {children}
+        </motion.div>
       </motion.div>
 
       {/* Floating Poke Particle Reactions */}

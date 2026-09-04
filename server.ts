@@ -388,6 +388,9 @@ app.post(["/api/tts", "/api/elevenlabs"], async (req, res) => {
   }
 });
 
+// Static serving for public directory assets (GLB models, images, icons, sounds)
+app.use(express.static(path.join(process.cwd(), "public")));
+
 // Start server with Vite middleware in dev mode
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

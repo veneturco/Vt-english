@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useAnimation } from "motion/react";
 import confetti from "canvas-confetti";
 import {
   AvatarAnimationState,
@@ -35,11 +35,13 @@ import {
 } from "./utils/storage";
 import { TOPIC_SCENARIOS, AVATAR_PRESETS, TEACHING_MODES } from "./data/presets";
 import { speakText, stopSpeaking, voiceRecognizer, prewarmAudioContext } from "./utils/speech";
+import { useMicVolume } from "./utils/useMicVolume";
 import { Navbar } from "./components/Navbar";
 import { KidsModeView } from "./components/KidsModeView";
 import { Avatar2DCanvas } from "./components/Avatar2DCanvas";
 import { AvatarCanvas } from "./components/AvatarCanvas";
 import { MascotPokeContainer } from "./components/mascots/MascotPokeContainer";
+import { isMascotBodyElement } from "./utils/avatarBodyDetection";
 import { TurpialRigCalibratorModal } from "./components/mascots/TurpialRigCalibratorModal";
 import { DialogueBubble } from "./components/DialogueBubble";
 import { InteractionBar } from "./components/InteractionBar";
@@ -70,12 +72,17 @@ import { BottomNavBar, MainAppTab } from "./components/BottomNavBar";
 import { SwipeNavigationIndicator } from "./components/SwipeNavigationIndicator";
 import { AdultLearningPath, LessonNode } from "./components/AdultLearningPath";
 import { LessonEngineView } from "./components/LessonEngineView";
+import { DailyBlitzModal } from "./components/DailyBlitzModal";
+import { UnitCertificateModal, UnitCertificateData } from "./components/UnitCertificateModal";
 import { ToolsHubView } from "./components/ToolsHubView";
 import { PlacementTestModal } from "./components/PlacementTestModal";
 import { QuestsAndShopModal } from "./components/QuestsAndShopModal";
 import { GrammarFeedbackSheet } from "./components/GrammarFeedbackSheet";
 import { ResearchRoadmapModal } from "./components/ResearchRoadmapModal";
 import { RoleplayImmersionModal } from "./components/RoleplayImmersionModal";
+import { ROLEPLAY_SCENARIOS } from "./data/roleplayScenariosData";
+import { markNodeCompleted } from "./utils/learningPathStorage";
+import { playSuccessFanfare } from "./utils/audioSynth";
 import { analyzeGrammar } from "./utils/grammarEngine";
 import { GrammarCorrection, RoleplayScenarioItem } from "./types";
 import { soundFx } from "./utils/soundFx";
@@ -228,6 +235,8 @@ export default function App() {
   );
   const [isPlacementTestOpen, setIsPlacementTestOpen] = useState(false);
   const [isQuestsAndShopOpen, setIsQuestsAndShopOpen] = useState(false);
+  const [isDailyBlitzOpen, setIsDailyBlitzOpen] = useState(false);
+  const [certificateModalData, setCertificateModalData] = useState<UnitCertificateData | null>(null);
   const [isTurpialCalibratorOpen, setIsTurpialCalibratorOpen] = useState(false);
   const [liveGrammarCorrection, setLiveGrammarCorrection] = useState<GrammarCorrection | null>(null);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -249,6 +258,35 @@ export default function App() {
   const [isProgressDashboardOpen, setIsProgressDashboardOpen] = useState(false);
   const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false);
   const [isSeasonalThemeModalOpen, setIsSeasonalThemeModalOpen] = useState(false);
+  const [activeCompanionPanel, setActiveCompanionPanel] = useState<"none" | "quests" | "scenario" | "idiom">("none");
+  const [activeBossNodeId, setActiveBossNodeId] = useState<string | null>(null);
+  const [pathProgressVersion, setPathProgressVersion] = useState(0);
+
+  const handleCompleteBossMission = () => {
+    if (!activeBossNodeId) return;
+    markNodeCompleted(activeBossNodeId);
+    setPathProgressVersion((v) => v + 1);
+
+    const bonusXp = 60;
+    const updatedGam = {
+      ...gamification,
+      xpPoints: gamification.xpPoints + bonusXp,
+      gems: gamification.gems + 15,
+      streakDays: Math.max(gamification.streakDays, 1),
+    };
+    setGamification(updatedGam);
+    saveStoredGamification(updatedGam);
+    playSuccessFanfare();
+    haptics.lessonComplete();
+    confetti({
+      particleCount: 80,
+      spread: 80,
+      origin: { y: 0.6 },
+    });
+
+    setActiveBossNodeId(null);
+    handleTabChange("roadmap");
+  };
 
   // Seasonal & Holiday Theme Engine (Automatic Calendar Detection + Live CSS sync)
   const {
@@ -261,30 +299,140 @@ export default function App() {
     changeParticleDensity: handleChangeParticleDensity,
   } = useSeasonalThemeEngine();
 
-  const [isStagePunched, setIsStagePunched] = useState(false);
+  const mascotSquishAnimation = useAnimation();
+  const stageScaleAnimation = useAnimation();
+  const lastStageClickTimeRef = useRef(0);
+  const lastGoldenHaloTimeRef = useRef(0);
 
   const stageRippleRef = useRef<AvatarStageRippleRef>(null);
   const avatarStageRef = useRef<HTMLElement>(null);
 
+  const triggerGoldenHaloAt = useCallback((x: number, y: number) => {
+    const now = Date.now();
+    if (now - lastGoldenHaloTimeRef.current < 60) return; // Debounce duplicate triggers within 60ms
+    lastGoldenHaloTimeRef.current = now;
+    stageRippleRef.current?.triggerGoldenHalo(x, y);
+  }, []);
+
+  // Real-time microphone input volume tracking during speaking state
+  const isSpeakingState = animationState === "speaking" || isPlayingAudio || isListening;
+  const { volume: rawMicVolume } = useMicVolume(isSpeakingState);
+
+  // Dynamic effective mic volume during speaking state (with smooth fallback to playback audio intensity)
+  const effectiveMicVolume = isListening
+    ? rawMicVolume
+    : (animationState === "speaking" || isPlayingAudio)
+    ? Math.max(rawMicVolume, mouthIntensity)
+    : rawMicVolume;
+
+  // Dynamic acoustic color hue: gently shifts from 222deg (deep slate blue) towards 254deg (acoustic indigo/violet)
+  const dynamicStageHue = 222 + Math.round(effectiveMicVolume * 34);
+
+  // Dynamic background opacity: subtly breathes from 0.90 to 0.98 based on mic input levels
+  const dynamicStageOpacity = isSpeakingState && effectiveMicVolume > 0.01
+    ? 0.90 + effectiveMicVolume * 0.08
+    : 0.92;
+
+  useEffect(() => {
+    if (activeMainTab === "chat") {
+      stageScaleAnimation.start({
+        opacity: 1,
+        scale: 1,
+        y: 0,
+        transition: { duration: 0.35, ease: "easeOut" },
+      });
+    }
+  }, [activeMainTab, stageScaleAnimation]);
+
   const handleAvatarStageClick = (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => {
-    // Only trigger if clicking stage / mascot area
+    const now = Date.now();
+    if (now - lastStageClickTimeRef.current < 50) return;
+    lastStageClickTimeRef.current = now;
+
     const stage = avatarStageRef.current || e.currentTarget;
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    stageRippleRef.current?.triggerRipple(x, y);
 
-    // Play character-type specific tactile sound (boing, squeak, chirp, dino boing)
+    // Quick tactile scale feedback: subtly shrink then expand #avatar-stage
+    stageScaleAnimation.start({
+      scale: [1, 0.982, 1.008, 1],
+      transition: {
+        duration: 0.22,
+        ease: "easeOut",
+        times: [0, 0.35, 0.7, 1],
+      },
+    });
+
+    // CONDITIONAL POKE INTERACTION:
+    // Check if the user specifically clicked/poked the mascot body element!
+    const target = (e.target as HTMLElement | SVGElement) || null;
+    const isBody = isMascotBodyElement(target);
+
+    if (!isBody) {
+      // Stage background click: trigger standard ambient ripple
+      stageRippleRef.current?.triggerRipple(x, y);
+      return;
+    }
+
+    // TRANSIENT GOLDEN HALO GLOW:
+    // Expand and fade a radiant golden halo glow from the point of contact on the mascot body!
+    triggerGoldenHaloAt(x, y);
+
+    // Play character-type specific tactile sound and haptics only on body poke
     soundFx.playCharacterStageSound(avatarConfig.preset);
     haptics.punch();
 
-    // Trigger physical 3D punch feedback
-    setIsStagePunched(true);
-    setTimeout(() => {
-      setIsStagePunched(false);
-    }, 180);
+    // Trigger physical squish & stretch keyframe animation via Framer Motion useAnimation
+    mascotSquishAnimation.start({
+      scaleX: [1, 1.32, 0.76, 1.18, 0.9, 1.06, 0.98, 1],
+      scaleY: [1, 0.68, 1.28, 0.86, 1.12, 0.95, 1.02, 1],
+      y: [0, 10, -18, 8, -4, 2, 0],
+      rotate: [0, -5, 5, -3, 2, -1, 0],
+      transition: {
+        duration: 0.7,
+        ease: "easeOut",
+        times: [0, 0.14, 0.32, 0.5, 0.68, 0.82, 0.92, 1],
+      },
+    });
+
+    setAnimationState("encouraging");
+    setTimeout(() => setAnimationState("idle"), 1600);
   };
+
+  // Interactive mouse-tracking effect within #avatar-stage boundaries
+  const [stageMousePos, setStageMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleStagePointerMove = useCallback((e: React.PointerEvent<HTMLElement> | React.MouseEvent<HTMLElement>) => {
+    const stage = avatarStageRef.current || (e.currentTarget as HTMLElement);
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    // Normalized relative coordinates: -0.5 to 0.5
+    const normX = Math.max(-0.5, Math.min(0.5, (e.clientX - rect.left) / rect.width - 0.5));
+    const normY = Math.max(-0.5, Math.min(0.5, (e.clientY - rect.top) / rect.height - 0.5));
+
+    setStageMousePos({ x: normX, y: normY });
+
+    // Update CSS variables directly on #avatar-stage for responsive atmospheric lighting
+    stage.style.setProperty("--stage-mouse-x", normX.toFixed(3));
+    stage.style.setProperty("--stage-mouse-y", normY.toFixed(3));
+    stage.style.setProperty("--stage-mouse-px", `${((normX + 0.5) * 100).toFixed(1)}%`);
+    stage.style.setProperty("--stage-mouse-py", `${((normY + 0.5) * 100).toFixed(1)}%`);
+  }, []);
+
+  const handleStagePointerLeave = useCallback(() => {
+    setStageMousePos({ x: 0, y: 0 });
+    const stage = avatarStageRef.current;
+    if (stage) {
+      stage.style.setProperty("--stage-mouse-x", "0");
+      stage.style.setProperty("--stage-mouse-y", "0");
+      stage.style.setProperty("--stage-mouse-px", "50%");
+      stage.style.setProperty("--stage-mouse-py", "50%");
+    }
+  }, []);
 
   // Pre-warm AudioContext on first user interaction for zero latency
   useEffect(() => {
@@ -1106,6 +1254,7 @@ export default function App() {
         onOpenProgressDashboard={() => setIsProgressDashboardOpen(true)}
         onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
         seasonalThemeConfig={seasonalThemeConfig}
+        onOpenToolsDrawer={() => setIsToolsDrawerOpen(true)}
         onOpenSRSFlashcards={() => {
           const currentCards = getStoredFlashcards();
           importVocabularyToFlashcards(currentCards, vocabulary);
@@ -1157,9 +1306,14 @@ export default function App() {
                 gemsCount={gamification.gems}
                 userXP={gamification.xpPoints}
                 userName={avatarConfig.name === "Sarah" ? "Estudiante" : "Tú"}
+                progressVersion={pathProgressVersion}
                 onStartLesson={(node) => {
                   if (node.type === "boss_roleplay") {
-                    setIsRoleplayModalOpen(true);
+                    const scenario =
+                      ROLEPLAY_SCENARIOS.find((s) => s.id === node.scenarioId) ||
+                      ROLEPLAY_SCENARIOS[0];
+                    handleSelectRoleplayScenario(scenario);
+                    setActiveBossNodeId(node.id);
                   } else {
                     setActiveLessonNode(node);
                   }
@@ -1185,6 +1339,17 @@ export default function App() {
                 onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
                 onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
                 onSwitchToKidsMode={handleSwitchToKidsMode}
+                onOpenDailyBlitz={() => setIsDailyBlitzOpen(true)}
+                onOpenCertificate={(cert) => {
+                  setCertificateModalData({
+                    studentName: avatarConfig.name === "Sarah" ? "Estudiante Pro" : "Usuario LinguaPro",
+                    unitTitle: cert.unitTitle,
+                    cefrLevel: cert.cefrLevel,
+                    completedDate: new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }),
+                    accuracy: 96,
+                    xpEarned: 250,
+                  });
+                }}
               />
             </motion.main>
           ) : activeMainTab === "tools" ? (
@@ -1265,11 +1430,31 @@ export default function App() {
               onPanEnd={handleTabPanEnd}
               className="flex-1 flex flex-col items-center justify-start p-3 sm:p-5 pb-28 max-w-2xl w-full mx-auto gap-4 z-10 touch-pan-y"
             >
-              {/* Daily Quests Expandable Widget */}
-              <DailyQuestsWidget
-                quests={dailyQuests}
-                onClaimReward={handleClaimQuestReward}
-              />
+              {/* Active Boss Mission Notification Banner */}
+              {activeBossNodeId && (
+                <div className="w-full rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white p-3.5 shadow-md flex items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg shrink-0">
+                      👑
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-amber-200">
+                        Simulación Boss en Curso
+                      </p>
+                      <p className="text-xs font-medium text-white/90">
+                        Completa el diálogo para superar la prueba y desbloquear la siguiente Unidad.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCompleteBossMission}
+                    className="px-3.5 py-2 rounded-xl bg-white text-slate-950 hover:bg-amber-100 font-extrabold text-xs shadow-sm transition shrink-0 cursor-pointer"
+                  >
+                    Completar Misión (+60 XP)
+                  </button>
+                </div>
+              )}
 
               {/* Central Mascot Stage (Flat 3D Geometric Stage) */}
               <motion.section
@@ -1277,21 +1462,24 @@ export default function App() {
                 ref={avatarStageRef}
                 onMouseDown={handleAvatarStageClick}
                 onPointerDown={handleAvatarStageClick}
+                onPointerMove={handleStagePointerMove}
+                onPointerLeave={handleStagePointerLeave}
                 style={
                   {
                     "--mouth-intensity": mouthIntensity,
-                    transform: isStagePunched
-                      ? "perspective(1000px) rotateX(10deg) rotateY(10deg) scale(0.97)"
-                      : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)",
-                    transformStyle: "preserve-3d",
-                    transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                    willChange: "transform",
+                    "--mic-volume": effectiveMicVolume,
+                    "--stage-bg-hue": `${dynamicStageHue}deg`,
+                    "--stage-bg-opacity": dynamicStageOpacity,
+                    "--stage-mouse-x": stageMousePos.x,
+                    "--stage-mouse-y": stageMousePos.y,
+                    "--stage-mouse-px": `${((stageMousePos.x + 0.5) * 100).toFixed(1)}%`,
+                    "--stage-mouse-py": `${((stageMousePos.y + 0.5) * 100).toFixed(1)}%`,
                   } as React.CSSProperties
                 }
                 initial={{ opacity: 0, scale: 0.98, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                whileTap={{ scale: 0.97 }}
-                className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] grid grid-rows-[auto_1fr_auto] relative rounded-3xl bg-slate-900 border-2 border-b-4 shadow-sm overflow-hidden cursor-pointer select-none transition-all duration-300 p-3 sm:p-4 gap-2 ${
+                animate={stageScaleAnimation}
+                whileTap={{ scale: 0.985 }}
+                className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] grid grid-rows-[auto_minmax(200px,1fr)_auto] relative rounded-3xl border-2 border-b-4 shadow-sm overflow-hidden select-none transition-all duration-300 p-3 sm:p-4 gap-2 cursor-pointer ${
                   isPlayingAudio || animationState === "speaking"
                     ? "border-amber-400/80 stage-speaking-pulse"
                     : "border-slate-800"
@@ -1315,7 +1503,7 @@ export default function App() {
                 />
 
                 {/* Row 1 (Auto): Top Header with Mascot Identity & Tutor Selector */}
-                <header className="w-full flex items-center justify-between gap-2 z-20 pointer-events-auto shrink-0">
+                <header className="w-full flex items-center justify-between gap-2 z-20 pointer-events-auto shrink-0 self-start">
                   {/* Mascot Identity Tag Pill */}
                   <button
                     type="button"
@@ -1351,23 +1539,12 @@ export default function App() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {/* Calibrador Anatómico 2.5D Button */}
-                    <button
-                      type="button"
-                      onClick={() => setIsTurpialCalibratorOpen(true)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 backdrop-blur-sm border-2 border-b-4 border-amber-500/40 hover:border-amber-500/70 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
-                      title="Calibrar distancias de cabeza, alas y medallas"
-                    >
-                      <span>📐</span>
-                      <span className="hidden sm:inline">Calibrar Rig</span>
-                    </button>
-
                     {/* Quick Tutor Selector */}
                     <button
                       type="button"
                       onClick={() => setIsAvatarModalOpen(true)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
-                      title="Cambiar tutor"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950/90 backdrop-blur-sm border-2 border-b-4 border-slate-800 hover:border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold shadow-sm transition"
+                      title="Cambiar tutor o personalizar"
                     >
                       <span>✨</span>
                       <span>Tutores</span>
@@ -1376,46 +1553,80 @@ export default function App() {
                 </header>
 
                 {/* Row 2 (1fr): Central Primary Flexible Mascot Viewport with Framer Motion Poke Squish Interaction */}
-                <main className="w-full h-full min-h-0 flex items-center justify-center relative z-10 overflow-visible">
+                <main className="w-full h-full min-h-[200px] flex-1 flex items-center justify-center relative z-10 overflow-visible">
                   <MascotPokeContainer
                     preset={avatarConfig.preset}
-                    onPoke={() => {
+                    controls={mascotSquishAnimation}
+                    mousePos={stageMousePos}
+                    onPoke={(contactPoint) => {
+                      if (contactPoint && contactPoint.clientX && avatarStageRef.current) {
+                        const rect = avatarStageRef.current.getBoundingClientRect();
+                        const x = contactPoint.clientX - rect.left;
+                        const y = contactPoint.clientY - rect.top;
+                        triggerGoldenHaloAt(x, y);
+                      } else if (avatarStageRef.current) {
+                        const rect = avatarStageRef.current.getBoundingClientRect();
+                        triggerGoldenHaloAt(rect.width / 2, rect.height * 0.48);
+                      }
                       setAnimationState("encouraging");
                       setTimeout(() => setAnimationState("idle"), 1600);
                     }}
                   >
                     {avatarConfig.customGlbUrl ? (
-                      <div className="w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative">
+                      <div
+                        id="avatar-body"
+                        data-avatar-body="true"
+                        data-mascot-body="true"
+                        className="avatar-body-component w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative cursor-pointer"
+                      >
                         <AvatarCanvas
                           config={avatarConfig}
                           animationState={animationState}
                           mouthIntensity={mouthIntensity}
                           isListening={isListening}
+                          stageMousePos={stageMousePos}
                           onMascotClick={() => {
+                            if (avatarStageRef.current) {
+                              const rect = avatarStageRef.current.getBoundingClientRect();
+                              triggerGoldenHaloAt(rect.width / 2, rect.height * 0.48);
+                            }
                             setAnimationState("encouraging");
                             setTimeout(() => setAnimationState("idle"), 1800);
                           }}
                         />
                       </div>
                     ) : (
-                      <Avatar2DCanvas
-                        config={avatarConfig}
-                        animationState={animationState}
-                        mouthIntensity={mouthIntensity}
-                        isListening={isListening}
-                        dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
-                        onMascotClick={() => {
-                          setAnimationState("encouraging");
-                          setTimeout(() => setAnimationState("idle"), 1500);
-                        }}
-                        onCustomizerClick={() => setIsAvatarModalOpen(true)}
-                      />
+                      <div
+                        id="avatar-body"
+                        data-avatar-body="true"
+                        data-mascot-body="true"
+                        className="avatar-body-component w-full h-full flex items-center justify-center relative cursor-pointer"
+                      >
+                        <Avatar2DCanvas
+                          config={avatarConfig}
+                          animationState={animationState}
+                          mouthIntensity={mouthIntensity}
+                          isListening={isListening}
+                          dailyGoalAchievedTrigger={dailyGoalAchievedTrigger}
+                          stageMousePos={stageMousePos}
+                          onMascotClick={() => {
+                            if (avatarStageRef.current) {
+                              const rect = avatarStageRef.current.getBoundingClientRect();
+                              triggerGoldenHaloAt(rect.width / 2, rect.height * 0.48);
+                            }
+                            setAnimationState("encouraging");
+                            setTimeout(() => setAnimationState("idle"), 1500);
+                          }}
+                          onCustomizerClick={() => setIsAvatarModalOpen(true)}
+                          onCalibrateRigClick={() => setIsTurpialCalibratorOpen(true)}
+                        />
+                      </div>
                     )}
                   </MascotPokeContainer>
                 </main>
 
                 {/* Row 3 (Auto): Anchored Footer with Live Feedback & Mic Cue */}
-                <footer className="w-full flex items-center justify-between text-[11px] text-slate-400 z-20 pointer-events-auto shrink-0 px-1">
+                <footer className="w-full flex items-center justify-between text-[11px] text-slate-400 z-20 pointer-events-auto shrink-0 px-1 self-end">
                   <div className="flex items-center gap-1.5 font-medium">
                     <span
                       className={`inline-block w-2 h-2 rounded-full ${
@@ -1442,16 +1653,7 @@ export default function App() {
                 </footer>
               </motion.section>
 
-              {/* Scenario Roleplay Missions & Goals Panel (Collapsible) */}
-              <section className="w-full">
-                <ScenarioMissionsPanel
-                  topicTitle={activeTopic.title}
-                  category={activeTopic.category}
-                  goals={scenarioGoals[activeTopic.id] || []}
-                />
-              </section>
-
-              {/* AI Dialogue Bubble */}
+              {/* AI Dialogue Bubble (Immediately below Avatar Stage for natural conversational focus) */}
               <section className="w-full">
                 <DialogueBubble
                   currentMessage={latestTutorMessage}
@@ -1491,19 +1693,151 @@ export default function App() {
                 />
               </section>
 
-              {/* Idiom of the Day Card */}
-              <section className="w-full">
-                <IdiomOfTheDayCard
-                  phrase={idiomOfTheDay.phrase}
-                  meaningSpanish={idiomOfTheDay.meaningSpanish}
-                  exampleEnglish={idiomOfTheDay.exampleEnglish}
-                  isUsedInSession={idiomOfTheDay.isUsed}
-                  onPracticeIdiom={(phrase) => {
-                    handleSendMessage(`Can we practice using the phrase "${phrase}"?`);
-                    setIdiomOfTheDay((prev) => ({ ...prev, isUsed: true }));
-                  }}
-                />
-              </section>
+              {/* Collapsible Session Companion Bar: Misiones, Metas y Modismo */}
+              {(() => {
+                const completedQuestsCount = dailyQuests.filter((q) => q.completed || q.current >= q.target).length;
+                const currentScenarioGoals = scenarioGoals[activeTopic.id] || [];
+                const completedGoalsCount = currentScenarioGoals.filter((g) => g.completed).length;
+
+                return (
+                  <section className="w-full flex flex-col gap-2.5">
+                    {/* Segmented Companion Pills */}
+                    <div className="w-full flex items-center justify-between gap-1 sm:gap-1.5 p-1 bg-slate-900/90 backdrop-blur-sm border border-slate-800 rounded-2xl select-none shadow-sm">
+                      {/* 1. Misiones Diarias Pill */}
+                      <button
+                        type="button"
+                        id="companion-pill-quests"
+                        onClick={() => {
+                          soundFx.playPop();
+                          setActiveCompanionPanel((prev) => (prev === "quests" ? "none" : "quests"));
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                          activeCompanionPanel === "quests"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                        }`}
+                        title="Ver misiones y recompensas diarias"
+                      >
+                        <span className="text-xs">🎯</span>
+                        <span className="truncate">Misiones</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                            completedQuestsCount === dailyQuests.length
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : "bg-slate-800 text-slate-400"
+                          }`}
+                        >
+                          {completedQuestsCount}/{dailyQuests.length}
+                        </span>
+                      </button>
+
+                      {/* 2. Metas de Escenario Pill */}
+                      <button
+                        type="button"
+                        id="companion-pill-scenario"
+                        onClick={() => {
+                          soundFx.playPop();
+                          setActiveCompanionPanel((prev) => (prev === "scenario" ? "none" : "scenario"));
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                          activeCompanionPanel === "scenario"
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                        }`}
+                        title="Ver retos y metas del tema actual"
+                      >
+                        <span className="text-xs">🎭</span>
+                        <span className="truncate">Retos</span>
+                        {currentScenarioGoals.length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-slate-800 text-slate-400">
+                            {completedGoalsCount}/{currentScenarioGoals.length}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* 3. Modismo del Día Pill */}
+                      <button
+                        type="button"
+                        id="companion-pill-idiom"
+                        onClick={() => {
+                          soundFx.playPop();
+                          setActiveCompanionPanel((prev) => (prev === "idiom" ? "none" : "idiom"));
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                          activeCompanionPanel === "idiom"
+                            ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-xs"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                        }`}
+                        title="Modismo recomendado del día"
+                      >
+                        <span className="text-xs">💡</span>
+                        <span className="truncate">Modismo</span>
+                        {idiomOfTheDay.isUsed && (
+                          <span className="text-[10px] text-emerald-400 font-black">✓</span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Animated Collapsible Panel Area */}
+                    <AnimatePresence>
+                      {activeCompanionPanel === "quests" && (
+                        <motion.div
+                          key="panel-quests"
+                          initial={{ opacity: 0, height: 0, y: -6 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -6 }}
+                          transition={{ duration: 0.2 }}
+                          className="w-full overflow-hidden"
+                        >
+                          <DailyQuestsWidget
+                            quests={dailyQuests}
+                            onClaimReward={handleClaimQuestReward}
+                          />
+                        </motion.div>
+                      )}
+
+                      {activeCompanionPanel === "scenario" && (
+                        <motion.div
+                          key="panel-scenario"
+                          initial={{ opacity: 0, height: 0, y: -6 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -6 }}
+                          transition={{ duration: 0.2 }}
+                          className="w-full overflow-hidden"
+                        >
+                          <ScenarioMissionsPanel
+                            topicTitle={activeTopic.title}
+                            category={activeTopic.category}
+                            goals={currentScenarioGoals}
+                          />
+                        </motion.div>
+                      )}
+
+                      {activeCompanionPanel === "idiom" && (
+                        <motion.div
+                          key="panel-idiom"
+                          initial={{ opacity: 0, height: 0, y: -6 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -6 }}
+                          transition={{ duration: 0.2 }}
+                          className="w-full overflow-hidden"
+                        >
+                          <IdiomOfTheDayCard
+                            phrase={idiomOfTheDay.phrase}
+                            meaningSpanish={idiomOfTheDay.meaningSpanish}
+                            exampleEnglish={idiomOfTheDay.exampleEnglish}
+                            isUsedInSession={idiomOfTheDay.isUsed}
+                            onPracticeIdiom={(phrase) => {
+                              handleSendMessage(`Can we practice using the phrase "${phrase}"?`);
+                              setIdiomOfTheDay((prev) => ({ ...prev, isUsed: true }));
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </section>
+                );
+              })()}
 
               {/* Pronunciation Meter */}
               {wordAccuracies.length > 0 && (
@@ -1764,31 +2098,78 @@ export default function App() {
 
       {activeLessonNode && (
         <LessonEngineView
+          nodeId={activeLessonNode.id}
           lessonTitle={activeLessonNode.title}
           lessonSubtitle={activeLessonNode.subtitle}
           initialXpReward={activeLessonNode.xp}
+          avatarConfig={avatarConfig}
+          streakDays={gamification.streakDays}
           onClose={() => setActiveLessonNode(null)}
-          onComplete={(xpEarned) => {
+          onComplete={(xpEarned, accuracy) => {
+            // Persist completed node & unlock next lesson in sequence
+            markNodeCompleted(activeLessonNode.id);
+            setPathProgressVersion((v) => v + 1);
+
+            const earnedGems = accuracy && accuracy >= 90 ? 10 : 5;
             const updatedGam = {
               ...gamification,
               xpPoints: gamification.xpPoints + xpEarned,
-              gems: gamification.gems + 5,
+              gems: gamification.gems + earnedGems,
+              streakDays: Math.max(gamification.streakDays, 1),
             };
             setGamification(updatedGam);
             saveStoredGamification(updatedGam);
             haptics.lessonComplete();
 
-            // Open Victory Screen
-            setVictoryModalState({
-              isOpen: true,
-              xpGained: xpEarned + 5,
-              streakCount: gamification.streakDays,
-              accuracyScore: 95,
-              wordsLearned: 3,
-              topicTitle: activeLessonNode.title,
+            confetti({
+              particleCount: 70,
+              spread: 70,
+              origin: { y: 0.6 },
             });
             setActiveLessonNode(null);
+
+            // Si es un nodo de culminación de unidad o jefe, premiar con Certificado de Unidad
+            if (activeLessonNode.id.includes("boss") || activeLessonNode.id.includes("n3")) {
+              setCertificateModalData({
+                studentName: avatarConfig.name === "Sarah" ? "Estudiante Pro" : "Usuario LinguaPro",
+                unitTitle: activeLessonNode.title,
+                cefrLevel: cefrLevel,
+                completedDate: new Date().toLocaleDateString("es-ES", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }),
+                accuracy: accuracy || 95,
+                xpEarned: xpEarned,
+              });
+            }
           }}
+        />
+      )}
+
+      {/* Daily Blitz Rapid-Fire Modal */}
+      <DailyBlitzModal
+        isOpen={isDailyBlitzOpen}
+        onClose={() => setIsDailyBlitzOpen(false)}
+        onComplete={(xpEarned, gemsEarned) => {
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + xpEarned,
+            gems: gamification.gems + gemsEarned,
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+          setIsDailyBlitzOpen(false);
+          soundFx.playSuccess();
+        }}
+      />
+
+      {/* Unit Completion Certificate Modal */}
+      {certificateModalData && (
+        <UnitCertificateModal
+          isOpen={!!certificateModalData}
+          onClose={() => setCertificateModalData(null)}
+          data={certificateModalData}
         />
       )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -12,6 +12,9 @@ import {
   ArrowRight,
   RotateCcw,
   VolumeX,
+  Mic,
+  MicOff,
+  BookOpen,
 } from "lucide-react";
 import {
   playPopSound,
@@ -22,140 +25,36 @@ import {
 } from "../utils/audioSynth";
 import { fireParticles } from "../utils/particleHelper";
 import { haptics } from "../utils/haptics";
-
-export interface LessonQuestion {
-  id: string;
-  type: "translation_multiple_choice";
-  instruction: string;
-  englishPrompt: string;
-  pronunciationHint?: string;
-  options: {
-    id: string;
-    text: string;
-    isCorrect: boolean;
-  }[];
-  explanation?: string;
-}
+import { getQuestionsForLessonNode, LessonQuestion } from "../data/lessonQuestionsData";
+import { AvatarConfig } from "../types";
+import { calculateSimilarity } from "../utils/storage";
+import { voiceRecognizer } from "../utils/speech";
+import { addMistakeToFlashcards } from "../utils/srs";
 
 export interface LessonEngineViewProps {
+  nodeId?: string;
   lessonTitle?: string;
   lessonSubtitle?: string;
   initialXpReward?: number;
+  avatarConfig?: AvatarConfig;
+  streakDays?: number;
   onClose: () => void;
-  onComplete?: (xpEarned: number) => void;
+  onComplete?: (xpEarned: number, accuracy?: number) => void;
 }
 
-const DEFAULT_QUESTIONS: LessonQuestion[] = [
-  {
-    id: "q1",
-    type: "translation_multiple_choice",
-    instruction: "Traduce esta frase al español",
-    englishPrompt: "I need to schedule a meeting with the marketing team.",
-    pronunciationHint: "ai niid tu ské-dyul a míi-ting...",
-    options: [
-      {
-        id: "opt-1-a",
-        text: "Necesito agendar una reunión con el equipo de marketing.",
-        isCorrect: true,
-      },
-      {
-        id: "opt-1-b",
-        text: "Quiero cancelar la llamada con el equipo de ventas.",
-        isCorrect: false,
-      },
-      {
-        id: "opt-1-c",
-        text: "Voy a enviar un informe al departamento de finanzas.",
-        isCorrect: false,
-      },
-    ],
-    explanation: "'Schedule a meeting' significa agendar o programar una reunión.",
-  },
-  {
-    id: "q2",
-    type: "translation_multiple_choice",
-    instruction: "Selecciona la traducción correcta",
-    englishPrompt: "Could you send me the updated slide deck before noon?",
-    pronunciationHint: "kud yu send mi di ap-déi-ted slaid dek...",
-    options: [
-      {
-        id: "opt-2-a",
-        text: "¿Cuándo empieza el almuerzo de trabajo con los clientes?",
-        isCorrect: false,
-      },
-      {
-        id: "opt-2-b",
-        text: "¿Podrías enviarme la presentación actualizada antes del mediodía?",
-        isCorrect: true,
-      },
-      {
-        id: "opt-2-c",
-        text: "¿Dónde guardaste los contratos anteriores de la empresa?",
-        isCorrect: false,
-      },
-    ],
-    explanation: "'Slide deck' es un término corporativo común para referirse a una presentación de diapositivas.",
-  },
-  {
-    id: "q3",
-    type: "translation_multiple_choice",
-    instruction: "Traduce esta frase profesional",
-    englishPrompt: "Let's align on the project timeline before Friday.",
-    pronunciationHint: "lets a-láin on da pró-yect táim-lain...",
-    options: [
-      {
-        id: "opt-3-a",
-        text: "Alineémonos sobre el cronograma del proyecto antes del viernes.",
-        isCorrect: true,
-      },
-      {
-        id: "opt-3-b",
-        text: "Vamos a posponer el proyecto hasta la próxima semana.",
-        isCorrect: false,
-      },
-      {
-        id: "opt-3-c",
-        text: "Hablemos sobre los nuevos presupuestos anuales de la oficina.",
-        isCorrect: false,
-      },
-    ],
-    explanation: "'To align on' significa ponerse de acuerdo o coordinar esfuerzos en común.",
-  },
-  {
-    id: "q4",
-    type: "translation_multiple_choice",
-    instruction: "Elige el significado correcto",
-    englishPrompt: "Thank you for the quick turnaround on this deliverable.",
-    pronunciationHint: "zenk yu for da kuík térn-a-raund...",
-    options: [
-      {
-        id: "opt-4-a",
-        text: "Disculpa la tardanza en responder tu mensaje de ayer.",
-        isCorrect: false,
-      },
-      {
-        id: "opt-4-b",
-        text: "Por favor revisa el documento adjunto lo antes posible.",
-        isCorrect: false,
-      },
-      {
-        id: "opt-4-c",
-        text: "Gracias por la rápida entrega de este entregable.",
-        isCorrect: true,
-      },
-    ],
-    explanation: "'Quick turnaround' se usa para agradecer una respuesta o entrega veloz.",
-  },
-];
-
 export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
+  nodeId,
   lessonTitle = "El Café de la Mañana & Presentaciones",
   lessonSubtitle = "Vocabulario clave y frases de oficina",
-  initialXpReward = 35,
+  initialXpReward = 25,
+  avatarConfig,
+  streakDays = 1,
   onClose,
   onComplete,
 }) => {
-  const [questions] = useState<LessonQuestion[]>(DEFAULT_QUESTIONS);
+  const [questions] = useState<LessonQuestion[]>(() =>
+    getQuestionsForLessonNode(nodeId, lessonTitle)
+  );
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [checkStatus, setCheckStatus] = useState<"idle" | "correct" | "incorrect">("idle");
@@ -164,9 +63,127 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Modo Hablado: Pronunciación por voz
+  const [isRecording, setIsRecording] = useState(false);
+  const [spokenTranscript, setSpokenTranscript] = useState("");
+  const [speechScores, setSpeechScores] = useState<{ word: string; score: number }[] | null>(null);
+  const [overallSpeechAccuracy, setOverallSpeechAccuracy] = useState<number | null>(null);
+  const [bonusSpeechXp, setBonusSpeechXp] = useState(0);
+  const [showSpeechChallenge, setShowSpeechChallenge] = useState(false);
+
+  // Avatar feedback mood
+  const [avatarMood, setAvatarMood] = useState<"idle" | "speaking" | "happy" | "thinking" | "listening">("idle");
+  const [avatarBubbleText, setAvatarBubbleText] = useState("¡Vamos! Selecciona la opción correcta.");
+
   const currentQuestion = questions[currentStep];
   const progressPercent = ((currentStep) / questions.length) * 100;
   const isLastQuestion = currentStep === questions.length - 1;
+
+  // Actualizar estado del avatar según eventos
+  useEffect(() => {
+    if (checkStatus === "correct") {
+      setAvatarMood("happy");
+      setAvatarBubbleText("¡Excelente! Bien formulado 🎉");
+    } else if (checkStatus === "incorrect") {
+      setAvatarMood("thinking");
+      setAvatarBubbleText("¡Ánimo! La guardé en tu cuaderno de repaso 📖");
+    } else if (isRecording) {
+      setAvatarMood("listening");
+      setAvatarBubbleText("Te escucho... habla con claridad 🎙️");
+    } else if (isSpeaking) {
+      setAvatarMood("speaking");
+      setAvatarBubbleText("Escucha atentamente el acento nativo 🎧");
+    } else {
+      setAvatarMood("idle");
+      setAvatarBubbleText(
+        avatarConfig?.name
+          ? `Soy ${avatarConfig.name}, ¡tú puedes lograrlo!`
+          : "¡Tú puedes lograrlo!"
+      );
+    }
+  }, [checkStatus, isRecording, isSpeaking, avatarConfig?.name]);
+
+  // Manejador del reconocimiento de voz para práctica oral
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const unsubscribe = voiceRecognizer.subscribe({
+      onStart: () => {
+        setIsRecording(true);
+      },
+      onTranscript: (text, isFinal) => {
+        setSpokenTranscript(text);
+        if (isFinal && currentQuestion) {
+          evaluateSpokenSpeech(text, currentQuestion.englishPrompt);
+          setIsRecording(false);
+        }
+      },
+      onError: (_err: string) => {
+        setIsRecording(false);
+      },
+      onEnd: () => {
+        setIsRecording(false);
+      },
+    });
+
+    voiceRecognizer.startListening();
+
+    return () => {
+      unsubscribe();
+      voiceRecognizer.stopListening();
+    };
+  }, [isRecording, currentQuestion]);
+
+  const evaluateSpokenSpeech = (spoken: string, target: string) => {
+    const cleanTargetWords = target
+      .toLowerCase()
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const cleanSpokenWords = spoken
+      .toLowerCase()
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const scores = cleanTargetWords.map((tWord) => {
+      let maxSim = 0;
+      cleanSpokenWords.forEach((sWord) => {
+        const sim = calculateSimilarity(sWord, tWord);
+        if (sim > maxSim) maxSim = sim;
+      });
+      return { word: tWord, score: Math.round(maxSim * 100) };
+    });
+
+    const avg =
+      scores.length > 0
+        ? Math.round(scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length)
+        : 0;
+
+    setSpeechScores(scores);
+    setOverallSpeechAccuracy(avg);
+
+    if (avg >= 70) {
+      playCoinSound();
+      haptics.success();
+      setBonusSpeechXp((prev) => prev + 10);
+      fireParticles(window.innerWidth / 2, window.innerHeight * 0.5, "stars", 30);
+    }
+  };
+
+  const toggleSpeechChallenge = () => {
+    if (isRecording) {
+      voiceRecognizer.stopListening();
+      setIsRecording(false);
+    } else {
+      setSpokenTranscript("");
+      setSpeechScores(null);
+      setOverallSpeechAccuracy(null);
+      setShowSpeechChallenge(true);
+      setIsRecording(true);
+    }
+  };
 
   // Reproducir pronunciación por voz nativa
   const speakPrompt = (text: string) => {
@@ -203,6 +220,11 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
   useEffect(() => {
     if (currentQuestion && !isFinished) {
       speakPrompt(currentQuestion.englishPrompt);
+      // Reset speech challenge for new step
+      setShowSpeechChallenge(false);
+      setSpokenTranscript("");
+      setSpeechScores(null);
+      setOverallSpeechAccuracy(null);
     }
   }, [currentStep, isFinished]);
 
@@ -231,6 +253,15 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
       setCheckStatus("incorrect");
       playErrorSoft();
       haptics.error();
+
+      // Guardar automáticamente en el Cuaderno Inteligente de Repaso (SRS)
+      const correctOpt = currentQuestion.options.find((o) => o.isCorrect);
+      addMistakeToFlashcards(
+        currentQuestion.englishPrompt,
+        correctOpt?.text || currentQuestion.explanation,
+        currentQuestion.explanation,
+        currentQuestion.pronunciationHint
+      );
     }
   };
 
@@ -239,14 +270,11 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
     playPopSound();
 
     if (isLastQuestion) {
-      // Finalizar lección
+      // Finalizar lección y mostrar pantalla de celebración
       setIsFinished(true);
       playSuccessFanfare();
       haptics.lessonComplete();
       fireParticles(window.innerWidth / 2, window.innerHeight * 0.4, "stars", 60);
-      if (onComplete) {
-        onComplete(initialXpReward);
-      }
     } else {
       // Pasar a la siguiente pregunta
       setCurrentStep((prev) => prev + 1);
@@ -277,12 +305,19 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
   if (isFinished) {
     const accuracy = Math.round((correctAnswersCount / questions.length) * 100);
 
+    const handleFinishAndReturn = () => {
+      if (onComplete) {
+        onComplete(initialXpReward + bonusSpeechXp, accuracy);
+      }
+      onClose();
+    };
+
     return (
       <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-between p-6 sm:p-10 animate-in fade-in duration-300">
         <div className="w-full max-w-md flex justify-end">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleFinishAndReturn}
             className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
           >
             <X className="w-6 h-6" />
@@ -323,7 +358,7 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
                 <span className="text-[11px] font-black uppercase">XP Total</span>
               </div>
               <span className="text-xl font-extrabold text-amber-950 mt-1">
-                +{initialXpReward}
+                +{initialXpReward + bonusSpeechXp}
               </span>
             </div>
 
@@ -343,7 +378,7 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
                 <span className="text-[11px] font-black uppercase">Racha</span>
               </div>
               <span className="text-xl font-extrabold text-orange-950 mt-1">
-                +1 Día
+                +{streakDays} Días
               </span>
             </div>
           </div>
@@ -353,7 +388,7 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
         <div className="w-full max-w-md pt-6">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleFinishAndReturn}
             className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-base shadow-xl shadow-indigo-600/30 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Volver al Mapa de Aprendizaje</span>
@@ -389,6 +424,24 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
           />
         </div>
 
+        {/* Avatar Companion Expression Pill */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200/80 shrink-0">
+          <span className="text-base select-none">
+            {avatarMood === "happy"
+              ? "🥳"
+              : avatarMood === "thinking"
+              ? "🤔"
+              : avatarMood === "listening"
+              ? "🎙️"
+              : avatarMood === "speaking"
+              ? "🗣️"
+              : avatarConfig?.characterEmoji || "👩‍🏫"}
+          </span>
+          <span className="text-[11px] font-bold text-slate-700 max-w-[120px] truncate">
+            {avatarBubbleText}
+          </span>
+        </div>
+
         {/* Contador de Pasos */}
         <span className="text-xs font-extrabold text-slate-400 shrink-0">
           {currentStep + 1} / {questions.length}
@@ -396,44 +449,113 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
       </header>
 
       {/* 2. ÁREA DE DESAFÍO (CENTRO) */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-4 flex flex-col justify-center gap-6 overflow-y-auto">
+      <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-4 flex flex-col justify-center gap-5 overflow-y-auto">
         
-        {/* Encabezado del Desafío */}
-        <div className="space-y-1">
-          <span className="text-xs font-black tracking-wider uppercase text-indigo-600 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Desafío de Traducción</span>
-          </span>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            {currentQuestion.instruction}
-          </h2>
+        {/* Encabezado del Desafío + Avatar Reaction para móviles */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-black tracking-wider uppercase text-indigo-600 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Desafío de Traducción & Fonética</span>
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {currentQuestion.instruction}
+            </h2>
+          </div>
+
+          <div className="sm:hidden flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+            <span>{avatarMood === "happy" ? "🎉" : avatarMood === "thinking" ? "📖" : "✨"}</span>
+          </div>
         </div>
 
         {/* Tarjeta de la Frase en Inglés + Botón de Audio */}
-        <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 border-2 border-slate-200/80 flex items-center justify-between gap-4 shadow-xs">
-          <div className="space-y-1">
-            <p className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">
-              "{currentQuestion.englishPrompt}"
-            </p>
-            {currentQuestion.pronunciationHint && (
-              <p className="text-xs text-slate-400 font-medium italic">
-                {currentQuestion.pronunciationHint}
+        <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 border-2 border-slate-200/80 flex flex-col gap-3 shadow-xs">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <p className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">
+                "{currentQuestion.englishPrompt}"
               </p>
-            )}
+              {currentQuestion.pronunciationHint && (
+                <p className="text-xs text-slate-400 font-medium italic">
+                  {currentQuestion.pronunciationHint}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => speakPrompt(currentQuestion.englishPrompt)}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm shrink-0 cursor-pointer ${
+                isSpeaking
+                  ? "bg-indigo-600 text-white scale-105"
+                  : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95"
+              }`}
+              title="Escuchar pronunciación nativa"
+            >
+              <Volume2 className={`w-6 h-6 ${isSpeaking ? "animate-pulse" : ""}`} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => speakPrompt(currentQuestion.englishPrompt)}
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm shrink-0 cursor-pointer ${
-              isSpeaking
-                ? "bg-indigo-600 text-white scale-105"
-                : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95"
-            }`}
-            title="Escuchar pronunciación nativa"
-          >
-            <Volume2 className={`w-6 h-6 ${isSpeaking ? "animate-pulse" : ""}`} />
-          </button>
+          {/* Desafío de Pronunciación Oral Interactivo */}
+          <div className="pt-2 border-t border-slate-200/70 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={toggleSpeechChallenge}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-extrabold text-xs transition cursor-pointer ${
+                  isRecording
+                    ? "bg-rose-500 text-white animate-pulse"
+                    : overallSpeechAccuracy !== null && overallSpeechAccuracy >= 70
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                    : "bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-xs"
+                }`}
+              >
+                {isRecording ? (
+                  <>
+                    <MicOff className="w-3.5 h-3.5 animate-bounce" />
+                    <span>Grabando... ¡Lee en voz alta!</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>
+                      {overallSpeechAccuracy !== null
+                        ? `Precisión oral: ${overallSpeechAccuracy}% (Repetir)`
+                        : "Practicar pronunciación oral (+10 XP)"}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              {overallSpeechAccuracy !== null && (
+                <span className={`text-xs font-black ${
+                  overallSpeechAccuracy >= 70 ? "text-emerald-600" : "text-amber-600"
+                }`}>
+                  {overallSpeechAccuracy >= 70 ? "¡Excelente! +10 XP" : "Sigue practicando"}
+                </span>
+              )}
+            </div>
+
+            {/* Desglose de Palabras Evaluadas */}
+            {speechScores && speechScores.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 p-2.5 rounded-xl bg-white border border-slate-200/80 animate-in fade-in">
+                {speechScores.map((item, idx) => (
+                  <span
+                    key={idx}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                      item.score >= 70
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : item.score >= 40
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-rose-50 text-rose-700 border-rose-200"
+                    }`}
+                  >
+                    {item.word} ({item.score}%)
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Opciones de Respuesta */}
@@ -528,6 +650,10 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
                   </h4>
                   <p className="text-xs text-rose-800 font-semibold">
                     {correctOption?.text}
+                  </p>
+                  <p className="text-[11px] text-rose-700/90 font-medium flex items-center gap-1 mt-0.5">
+                    <BookOpen className="w-3 h-3" />
+                    <span>Guardado en Cuaderno de Repaso para practicar</span>
                   </p>
                 </div>
               </div>

@@ -113,6 +113,56 @@ export function reviewFlashcard(
   };
 }
 
+export function addMistakeToFlashcards(
+  frontWord: string,
+  backMeaning: string,
+  exampleSentence?: string,
+  phoneticSpanish?: string
+): SRSFlashcard[] {
+  const existing = getStoredFlashcards();
+  const normalized = frontWord.trim().toLowerCase();
+  const existingIndex = existing.findIndex((c) => c.frontWord.trim().toLowerCase() === normalized);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (existingIndex !== -1) {
+    // Reset card so it is immediately scheduled for review today
+    existing[existingIndex] = {
+      ...existing[existingIndex],
+      repetitions: 0,
+      intervalDays: 1,
+      nextReviewDate: todayStr,
+      backMeaning: backMeaning || existing[existingIndex].backMeaning,
+      exampleSentence: exampleSentence || existing[existingIndex].exampleSentence,
+    };
+    saveStoredFlashcards(existing);
+    return existing;
+  }
+
+  const newCard: SRSFlashcard = {
+    id: `mistake_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    frontWord: frontWord.trim(),
+    backMeaning: backMeaning.trim(),
+    ipa: "",
+    phoneticSpanish: phoneticSpanish || "",
+    exampleSentence: exampleSentence || "",
+    intervalDays: 1,
+    repetitions: 0,
+    easeFactor: 2.3,
+    nextReviewDate: todayStr,
+  };
+
+  const updated = [newCard, ...existing];
+  saveStoredFlashcards(updated);
+  return updated;
+}
+
+export function getDueFlashcardsCount(): number {
+  const cards = getStoredFlashcards();
+  const today = new Date().toISOString().split("T")[0];
+  return cards.filter((c) => !c.nextReviewDate || c.nextReviewDate <= today).length;
+}
+
 export function importVocabularyToFlashcards(
   existingCards: SRSFlashcard[],
   vocabItems: VocabularyItem[]

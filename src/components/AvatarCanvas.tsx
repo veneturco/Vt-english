@@ -13,6 +13,7 @@ interface AvatarCanvasProps {
   mouthIntensity?: number; // 0 a 1
   isListening?: boolean;
   onMascotClick?: () => void;
+  stageMousePos?: { x: number; y: number };
 }
 
 export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
@@ -21,6 +22,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
   mouthIntensity = 0,
   isListening = false,
   onMascotClick,
+  stageMousePos,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [glbReport, setGlbReport] = useState<GlbDiagnosticReport | null>(null);
@@ -48,6 +50,15 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
     stateRef.current.isListening = isListening;
     stateRef.current.config = config;
   }, [animationState, mouthIntensity, isListening, config]);
+
+  useEffect(() => {
+    if (stageMousePos) {
+      stateRef.current.mouseTarget = {
+        x: stageMousePos.x * 2,
+        y: -stageMousePos.y * 2,
+      };
+    }
+  }, [stageMousePos]);
 
   useEffect(() => {
     stateRef.current.userRotY = rotationY;
@@ -79,7 +90,8 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
     scene.fog = new THREE.FogExp2(0x0d1117, 0.1);
 
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
-    camera.position.set(0, 1.42, 2.7);
+    camera.position.set(0, 1.32, 2.75);
+    camera.lookAt(0, 1.05, 0);
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -1237,6 +1249,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
 
     // CASO 0: MODELO 3D .GLB PERSONALIZADO
     if (config.customGlbUrl) {
+      headGroup.position.set(0, 0.06, 0);
       const loader = new GLTFLoader();
       loader.load(
         config.customGlbUrl,
@@ -1244,8 +1257,17 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
           const model = gltf.scene;
           customGlbScene = model;
 
-          // 1. Inicializar Controlador de Rig y Cinemática Aviar / Búho
-          avianRigController = new AvianRigController(gltf, config.customGlbName || "profesor_buho.glb");
+          // 1. Inicializar Controlador de Rig y Cinemática
+          avianRigController = new AvianRigController(gltf, config.customGlbName || "shiba.glb");
+          avianRigController.setMouthOffsets({
+            x: config.glbMouthX ?? (config.preset === "shiba_inu" || (config.customGlbName || "").includes("shiba") ? 0 : 0),
+            y: config.glbMouthY ?? (config.preset === "shiba_inu" || (config.customGlbName || "").includes("shiba") ? 0.94 : 1.45),
+            z: config.glbMouthZ ?? (config.preset === "shiba_inu" || (config.customGlbName || "").includes("shiba") ? 0.62 : 0.42),
+            scale: config.glbMouthScale ?? 1.0,
+            openDist: config.glbMouthOpenDist ?? 0.08,
+            type: config.glbMouthType ?? ((config.preset === "shiba_inu" || (config.customGlbName || "").includes("shiba")) ? "shiba_snout" : "avian_beak"),
+            enabled: config.glbMouthEnabled ?? true,
+          });
           setGlbReport(avianRigController.report);
 
           // 2. Si el GLB ya incluye clips de animación precalculados, activarlos
@@ -1262,6 +1284,7 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         undefined,
         (err) => {
           console.warn("No se pudo cargar el modelo GLB personalizado (URL no accesible o expirada), recurriendo al modelo 3D procedimental:", err);
+          headGroup.position.set(0, 1.36, 0);
           buildProceduralAvatar();
         }
       );
@@ -1354,6 +1377,18 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
       // ANIMACIÓN PROCEDURAL KINEMÁTICA PARA MODELOS 3D .GLB (BÚHO / AVE)
       // ==========================================================
       if (avianRigController) {
+        const liveConf = stateRef.current.config;
+        if (liveConf) {
+          avianRigController.setMouthOffsets({
+            x: liveConf.glbMouthX,
+            y: liveConf.glbMouthY,
+            z: liveConf.glbMouthZ,
+            scale: liveConf.glbMouthScale,
+            openDist: liveConf.glbMouthOpenDist,
+            type: liveConf.glbMouthType,
+            enabled: liveConf.glbMouthEnabled,
+          });
+        }
         avianRigController.update(
           delta,
           elapsed,

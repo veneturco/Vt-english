@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import {
   Check,
@@ -17,6 +17,11 @@ import {
 import { CEFRLevel, RoleplayScenarioItem } from "../types";
 import { playPopSound, playCoinSound } from "../utils/audioSynth";
 import { haptics } from "../utils/haptics";
+import {
+  getStoredLearningPathProgress,
+  LearningPathProgress,
+} from "../utils/learningPathStorage";
+import { getDueFlashcardsCount } from "../utils/srs";
 
 export interface LessonNode {
   id: string;
@@ -53,7 +58,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "lesson",
         status: "completed",
         xp: 20,
-        scenarioId: "daily_coffee",
+        scenarioId: "tech_interview",
         icon: "👋",
       },
       {
@@ -73,7 +78,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "practice",
         status: "locked",
         xp: 30,
-        scenarioId: "daily_coffee",
+        scenarioId: "starbucks_nyc",
         icon: "📅",
       },
       {
@@ -102,7 +107,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "lesson",
         status: "locked",
         xp: 30,
-        scenarioId: "daily_coffee",
+        scenarioId: "hotel_concierge",
         icon: "✉️",
       },
       {
@@ -112,7 +117,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "lesson",
         status: "locked",
         xp: 35,
-        scenarioId: "daily_coffee",
+        scenarioId: "hotel_concierge",
         icon: "🗣️",
       },
       {
@@ -122,7 +127,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "practice",
         status: "locked",
         xp: 40,
-        scenarioId: "daily_coffee",
+        scenarioId: "hotel_concierge",
         icon: "⚡",
       },
       {
@@ -132,7 +137,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "boss_roleplay",
         status: "locked",
         xp: 75,
-        scenarioId: "job_interview",
+        scenarioId: "hotel_concierge",
         icon: "🏆",
       },
     ],
@@ -151,7 +156,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "lesson",
         status: "locked",
         xp: 45,
-        scenarioId: "job_interview",
+        scenarioId: "tech_interview",
         icon: "💼",
       },
       {
@@ -161,7 +166,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "practice",
         status: "locked",
         xp: 50,
-        scenarioId: "job_interview",
+        scenarioId: "tech_interview",
         icon: "🎯",
       },
       {
@@ -190,7 +195,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "lesson",
         status: "locked",
         xp: 55,
-        scenarioId: "tech_startup",
+        scenarioId: "startup_pitch",
         icon: "💡",
       },
       {
@@ -200,7 +205,7 @@ export const ADULT_UNITS: LearningUnitData[] = [
         type: "boss_roleplay",
         status: "locked",
         xp: 120,
-        scenarioId: "tech_startup",
+        scenarioId: "startup_pitch",
         icon: "🏆",
       },
     ],
@@ -217,6 +222,7 @@ export interface AdultLearningPathProps {
   gemsCount: number;
   userXP?: number;
   userName?: string;
+  progressVersion?: number;
   onStartLesson: (node: LessonNode) => void;
   onOpenRoleplayModal?: () => void;
   onOpenPlacementTest?: () => void;
@@ -232,6 +238,8 @@ export interface AdultLearningPathProps {
   onOpenResearchRoadmap?: () => void;
   onOpenSeasonalTheme?: () => void;
   onSwitchToKidsMode?: () => void;
+  onOpenDailyBlitz?: () => void;
+  onOpenCertificate?: (data: { unitTitle: string; unitNumber: number; cefrLevel: string }) => void;
 }
 
 export function AdultLearningPath({
@@ -240,6 +248,7 @@ export function AdultLearningPath({
   gemsCount,
   userXP = 520,
   userName = "Tú",
+  progressVersion = 0,
   onStartLesson,
   onOpenRoleplayModal,
   onOpenPlacementTest,
@@ -255,8 +264,45 @@ export function AdultLearningPath({
   onOpenResearchRoadmap,
   onOpenSeasonalTheme,
   onSwitchToKidsMode,
+  onOpenDailyBlitz,
+  onOpenCertificate,
 }: AdultLearningPathProps) {
   const [selectedNodeModal, setSelectedNodeModal] = useState<LessonNode | null>(null);
+
+  const [progress, setProgress] = useState<LearningPathProgress>(() =>
+    getStoredLearningPathProgress(currentLevel)
+  );
+
+  const dueFlashcardsCount = useMemo(() => getDueFlashcardsCount(), [progressVersion]);
+
+  useEffect(() => {
+    setProgress(getStoredLearningPathProgress(currentLevel));
+  }, [progressVersion, currentLevel]);
+
+  const dynamicUnits = useMemo(() => {
+    return ADULT_UNITS.map((unit) => {
+      const isUnitUnlocked = progress.unlockedUnitIds.includes(unit.id);
+      const dynamicNodes = unit.nodes.map((node) => {
+        let status: "completed" | "current" | "locked" = "locked";
+        if (progress.completedNodeIds.includes(node.id)) {
+          status = "completed";
+        } else if (progress.currentNodeId === node.id && isUnitUnlocked) {
+          status = "current";
+        } else {
+          status = "locked";
+        }
+        return {
+          ...node,
+          status,
+        };
+      });
+      return {
+        ...unit,
+        isUnlocked: isUnitUnlocked,
+        nodes: dynamicNodes,
+      };
+    });
+  }, [progress]);
 
   const handleNodeClick = (node: LessonNode) => {
     if (node.status === "locked") return;
@@ -311,6 +357,19 @@ export function AdultLearningPath({
               <span>{gemsCount}</span>
             </div>
 
+            {/* Reto Blitz 60s */}
+            {onOpenDailyBlitz && (
+              <button
+                type="button"
+                onClick={onOpenDailyBlitz}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs shadow-xs transition cursor-pointer"
+                title="Desafío rápido de 60 segundos"
+              >
+                <Zap className="w-3.5 h-3.5 fill-white" />
+                <span className="hidden sm:inline">Blitz 60s</span>
+              </button>
+            )}
+
             {/* Test de nivel discreto */}
             {onOpenPlacementTest && (
               <button
@@ -358,6 +417,32 @@ export function AdultLearningPath({
           gemsCount={gemsCount}
         />
 
+        {/* WIDGET CUADERNO INTELIGENTE DE REPASO (SRS MISTAKES) */}
+        {dueFlashcardsCount > 0 && onOpenFlashcards && (
+          <div className="p-4 rounded-3xl bg-amber-50/90 border-2 border-amber-200 flex items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-base shrink-0 shadow-sm">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs sm:text-sm font-black text-amber-950">
+                  Cuaderno de Errores ({dueFlashcardsCount} frases listas)
+                </h4>
+                <p className="text-[11px] sm:text-xs text-amber-800 font-medium">
+                  Repasa tus errores con repetición espaciada (+15 XP).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenFlashcards}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shrink-0 shadow-sm active:scale-95 transition cursor-pointer"
+            >
+              Repasar
+            </button>
+          </div>
+        )}
+
         {/* WIDGET LIGA SEMANAL COMPACTO */}
         <WeeklyLeagueWidget
           userXP={userXP}
@@ -366,7 +451,7 @@ export function AdultLearningPath({
           onOpenFullLeaderboard={onOpenLeaderboard}
         />
 
-        {ADULT_UNITS.map((unit) => {
+        {dynamicUnits.map((unit) => {
           const completedCount = unit.nodes.filter((n) => n.status === "completed").length;
           const totalCount = unit.nodes.length;
           const isUnitCompleted = completedCount === totalCount;
@@ -389,6 +474,12 @@ export function AdultLearningPath({
                         Completada
                       </span>
                     )}
+                    {!unit.isUnlocked && (
+                      <span className="flex items-center gap-1 text-slate-400 text-xs font-bold">
+                        <Lock className="w-3.5 h-3.5" />
+                        Bloqueada
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-1">
                     {unit.title}
@@ -398,9 +489,27 @@ export function AdultLearningPath({
                   </p>
                 </div>
 
-                {/* Progress Mini-Pill */}
-                <div className="z-10 shrink-0 self-end sm:self-center px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300">
-                  {completedCount} / {totalCount} pasos
+                {/* Progress Mini-Pill & Certificate Button */}
+                <div className="z-10 shrink-0 self-end sm:self-center flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                  {isUnitCompleted && onOpenCertificate && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenCertificate({
+                          unitTitle: unit.title,
+                          unitNumber: unit.unitNumber,
+                          cefrLevel: unit.level,
+                        })
+                      }
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-md transition cursor-pointer active:scale-95"
+                    >
+                      <Award className="w-3.5 h-3.5 fill-slate-950" />
+                      <span>Certificado</span>
+                    </button>
+                  )}
+                  <div className="px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300">
+                    {completedCount} / {totalCount} pasos
+                  </div>
                 </div>
               </div>
 
