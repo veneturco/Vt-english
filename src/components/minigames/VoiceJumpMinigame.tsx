@@ -297,17 +297,29 @@ export const VoiceJumpMinigame: React.FC<VoiceJumpMinigameProps> = ({
             <Award className="w-4 h-4" />
           </button>
         ) : (
-          <button
-            onClick={() => {
-              setGameState("idle");
-              setFeedbackMessage("");
-              setTranscript("");
-            }}
-            className="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                evaluatePronunciation(targetWord);
+              }}
+              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1 transition border border-amber-400/30 cursor-pointer"
+              title="Test jump simulation"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Simulate Jump</span>
+            </button>
+            <button
+              onClick={() => {
+                setGameState("idle");
+                setFeedbackMessage("");
+                setTranscript("");
+              }}
+              className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

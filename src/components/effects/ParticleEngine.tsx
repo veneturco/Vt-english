@@ -133,6 +133,39 @@ export const ParticleEngine: React.FC = () => {
           ctx.beginPath();
           ctx.arc(0, 0, p.size * 0.6, 0, Math.PI * 2);
           ctx.fill();
+        } else if (p.type === "bubbles") {
+          // Translucent water bubble with specular reflex highlight
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(56, 189, 248, 0.45)";
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = "rgba(224, 242, 254, 0.85)";
+          ctx.stroke();
+
+          // White specular reflection dot
+          ctx.beginPath();
+          ctx.arc(-p.size * 0.35, -p.size * 0.35, p.size * 0.28, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+          ctx.fill();
+        } else if (p.type === "coins") {
+          // Golden Mario-style spinning coin
+          const flipScale = Math.cos(p.rotation * 2);
+          ctx.scale(flipScale, 1);
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = "#fbbf24";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#f59e0b";
+          ctx.stroke();
+
+          // Inner rim
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.6, 0, Math.PI * 2);
+          ctx.strokeStyle = "#d97706";
+          ctx.lineWidth = 1;
+          ctx.stroke();
         } else {
           // Confeti rectangular clásico con perspectiva de rotación
           ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.6);
@@ -156,21 +189,43 @@ export const ParticleEngine: React.FC = () => {
         const angle = Math.random() * Math.PI * 2;
         // Velocidad explosiva inicial con dispersión aleatoria
         const speed = Math.random() * 14 + 4;
-        const color = BRIGHT_PALETTE[Math.floor(Math.random() * BRIGHT_PALETTE.length)];
+        const color =
+          type === "coins"
+            ? "#fbbf24"
+            : BRIGHT_PALETTE[Math.floor(Math.random() * BRIGHT_PALETTE.length)];
 
         particlesRef.current.push({
           x,
           y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - (type === "confetti" ? 4 : 2), // Impulso ascendente extra
+          vx: Math.cos(angle) * (type === "coins" ? speed * 0.7 : speed),
+          vy:
+            Math.sin(angle) * speed -
+            (type === "confetti" ? 4 : type === "coins" ? 6 : type === "bubbles" ? 2 : 2), // Impulso ascendente
           rotation: Math.random() * Math.PI * 2,
-          vRotation: (Math.random() - 0.5) * 0.25,
-          size: type === "stars" ? Math.random() * 8 + 6 : Math.random() * 9 + 5,
+          vRotation: type === "coins" ? 0.15 : (Math.random() - 0.5) * 0.25,
+          size:
+            type === "stars"
+              ? Math.random() * 8 + 6
+              : type === "coins"
+              ? Math.random() * 6 + 9
+              : type === "bubbles"
+              ? Math.random() * 8 + 6
+              : Math.random() * 9 + 5,
           color,
           alpha: 1.0,
-          decay: Math.random() * 0.018 + 0.012, // Tasa de desvanecimiento
-          gravity: type === "stars" ? 0.22 : 0.38, // Estrellas flotan más tiempo
-          friction: 0.965, // Resistencia al aire
+          decay:
+            type === "bubbles"
+              ? Math.random() * 0.02 + 0.015
+              : Math.random() * 0.018 + 0.012,
+          gravity:
+            type === "stars"
+              ? 0.22
+              : type === "bubbles"
+              ? -0.06 // Las burbujas ascienden suavemente
+              : type === "coins"
+              ? 0.42
+              : 0.38,
+          friction: type === "bubbles" ? 0.94 : 0.965,
           type,
           points: 5,
         });

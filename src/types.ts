@@ -314,7 +314,14 @@ export interface UserGamificationState {
 export type AppExperienceMode = "adults" | "kids";
 
 export type KidsAgeGroup = "preschool" | "explorer" | "champion"; // 4-6 (Visual), 7-9 (Words), 10-12 (Sentences)
-export type KidsGameMode = "map" | "dino_snack" | "voice_jump" | "block_bash" | "pipe_listening";
+export type KidsGameMode =
+  | "map"
+  | "dino_snack"
+  | "voice_jump"
+  | "block_bash"
+  | "bubble_spelling"
+  | "pipe_tunnel"
+  | "pipe_listening";
 
 export interface KidsLessonCard {
   id: string;

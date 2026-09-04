@@ -218,13 +218,15 @@ export const hablarSegmentoNativo = (
 // --- SÍNTESIS BILINGÜE INTELIGENTE (Code-Switching Automático) ---
 export async function speakBilingualSpeech(
   segments: Array<{ text: string; lang: "es-ES" | "en-US" | "en-GB" | "en-AU" }>,
-  avatarConfig: AvatarConfig,
+  avatarConfig?: AvatarConfig | null,
   onStart?: () => void,
   onEnd?: () => void,
   onLipSync?: (phonemeIntensity: number) => void,
   options?: { rateMultiplier?: number }
 ): Promise<void> {
   stopSpeaking();
+
+  const safeGender = avatarConfig?.voiceGender || "female";
 
   const validSegments = segments
     .map((s) => ({
@@ -256,7 +258,7 @@ export async function speakBilingualSpeech(
 
     hablarSegmentoNativo(
       current.text,
-      avatarConfig.voiceGender,
+      safeGender,
       current.lang,
       options?.rateMultiplier || 1.0,
       onLipSync,
@@ -277,7 +279,7 @@ export async function speakBilingualSpeech(
 // --- FUNCIÓN PRINCIPAL DE ENRUTAMIENTO DE VOZ ---
 export async function speakText(
   text: string,
-  avatarConfig: AvatarConfig,
+  avatarConfig?: AvatarConfig | null,
   onStart?: () => void,
   onEnd?: () => void,
   onLipSync?: (phonemeIntensity: number) => void,
@@ -291,6 +293,25 @@ export async function speakText(
   }
 ): Promise<void> {
   stopSpeaking();
+
+  const safeConfig: AvatarConfig = avatarConfig || {
+    preset: "teacher_female",
+    name: "Teacher Sarah",
+    role: "English Coach",
+    skinTone: "#ffd1b3",
+    hairStyle: "bun",
+    hairColor: "#4a2c11",
+    glasses: "none",
+    outfit: "casual_blazer",
+    outfitColor: "#4f46e5",
+    accentColor: "#fbbf24",
+    accessory: "none",
+    voiceGender: "female",
+    voiceRate: 1.0,
+    voicePitch: 1.0,
+    voiceAccent: "en-US",
+    voiceEngine: "native",
+  };
 
   // Si se proporciona contexto bilingüe (Español cálido + Inglés nativo), ejecutar síntesis bilingüe inteligente
   if (
@@ -312,14 +333,14 @@ export async function speakText(
     if (englishText) {
       segments.push({
         text: englishText,
-        lang: (avatarConfig.voiceAccent as any) || "en-US",
+        lang: (safeConfig.voiceAccent as any) || "en-US",
       });
     }
 
     if (segments.length > 0) {
       return speakBilingualSpeech(
         segments,
-        avatarConfig,
+        safeConfig,
         onStart,
         onEnd,
         onLipSync,
@@ -335,7 +356,7 @@ export async function speakText(
   }
 
   // Detección automática del idioma si no se especificó forceLang
-  let targetLang = options?.forceLang || avatarConfig.voiceAccent || "en-US";
+  let targetLang = options?.forceLang || safeConfig.voiceAccent || "en-US";
   if (!options?.forceLang) {
     // Si contiene caracteres o patrones típicos del español
     const isSpanishText =
@@ -349,17 +370,17 @@ export async function speakText(
   }
 
   // 1. SI EL USUARIO ELIGIÓ ELEVENLABS, PEDIR AL BACKEND SEGURO
-  if (avatarConfig.voiceEngine === "elevenlabs") {
+  if (safeConfig.voiceEngine === "elevenlabs") {
     try {
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: cleanedText,
-          gender: avatarConfig.voiceGender,
+          gender: safeConfig.voiceGender,
           speakingRate: options?.rateMultiplier
-            ? (avatarConfig.voiceRate || 1.0) * options.rateMultiplier
-            : avatarConfig.voiceRate || 1.0,
+            ? (safeConfig.voiceRate || 1.0) * options.rateMultiplier
+            : safeConfig.voiceRate || 1.0,
         }),
       });
 
@@ -410,7 +431,7 @@ export async function speakText(
   // 2. MOTOR NATIVO (GRATUITO E ILIMITADO)
   hablarSegmentoNativo(
     cleanedText,
-    avatarConfig.voiceGender,
+    safeConfig.voiceGender,
     targetLang,
     options?.rateMultiplier || 1.0,
     onLipSync,

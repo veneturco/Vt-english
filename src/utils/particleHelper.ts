@@ -1,4 +1,4 @@
-export type ParticleType = "confetti" | "stars" | "sparks";
+export type ParticleType = "confetti" | "stars" | "sparks" | "bubbles" | "coins";
 
 export interface SpawnParticlesDetail {
   x: number;

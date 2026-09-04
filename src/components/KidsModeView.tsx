@@ -59,9 +59,15 @@ import {
   Utensils,
   VolumeX,
   GraduationCap,
+  Pause,
+  PartyPopper,
+  Sliders,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { ModeSwitcher } from "./ModeSwitcher";
+import { VoiceJumpTestModal } from "./minigames/VoiceJumpTestModal";
+import { BubblePopSpellingMinigame } from "./minigames/BubblePopSpellingMinigame";
+import { DinoPipeTunnelMinigame } from "./minigames/DinoPipeTunnelMinigame";
 
 interface KidsModeViewProps {
   onSwitchToAdultsMode: () => void;
@@ -232,6 +238,20 @@ const KIDS_COMPANIONS: KidsCompanionOption[] = [
   },
 ];
 
+interface LevelVictoryData {
+  worldId: string;
+  worldTitle: string;
+  worldIcon: string;
+  cardIndex: number;
+  totalCards: number;
+  completedCard: KidsLessonCard;
+  nextCard: KidsLessonCard | null;
+  starsEarned: number;
+  coinsEarned: number;
+  combo: number;
+  isWorldBoss: boolean;
+}
+
 export const KidsModeView: React.FC<KidsModeViewProps> = ({
   onSwitchToAdultsMode,
   onExperienceModeChange,
@@ -257,14 +277,42 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   const [isEggModalOpen, setIsEggModalOpen] = useState<boolean>(false);
   const [eggCrackAnim, setEggCrackAnim] = useState<boolean>(false);
 
+  const [victoryModalData, setVictoryModalData] = useState<LevelVictoryData | null>(null);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number>(4);
+  const [isAutoAdvancePaused, setIsAutoAdvancePaused] = useState<boolean>(false);
+
+  const [isVoiceJumpTestModalOpen, setIsVoiceJumpTestModalOpen] = useState<boolean>(false);
+  const [voiceJumpTranscript, setVoiceJumpTranscript] = useState<string>("");
+
   const [mascotMood, setMascotMood] = useState<
     "happy" | "speaking" | "celebrating" | "encouraging" | "eating"
   >("happy");
   const [blockHitEffect, setBlockHitEffect] = useState<number | null>(null);
   const [comboCount, setComboCount] = useState<number>(0);
   const [isDraggingFood, setIsDraggingFood] = useState<boolean>(false);
+  const [foodDragPos, setFoodDragPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [isMascotJumping, setIsMascotJumping] = useState<boolean>(false);
   const [mouthIntensity, setMouthIntensity] = useState<number>(0);
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Companion Idle Animation: gentle encouraging reaction if inactive for 9 seconds
+  useEffect(() => {
+    let idleTimer: NodeJS.Timeout;
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setMascotMood("encouraging");
+        setTimeout(() => setMascotMood("happy"), 1800);
+      }, 9000);
+    };
+
+    window.addEventListener("pointerdown", resetIdleTimer);
+    resetIdleTimer();
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("pointerdown", resetIdleTimer);
+    };
+  }, []);
 
   // Clean up auto-advance timer on unmount
   useEffect(() => {
@@ -310,6 +358,78 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   ];
 
   const currentEgg = eggStages[Math.min(kidsProgress.dinoEggStage, eggStages.length - 1)];
+
+  // Handler for advancing to the next challenge from victory modal
+  const handleGoToNextChallenge = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    kidsSFX.playJumpSound();
+    setFeedbackMessage(null);
+    const targetNextIndex = currentCardIndex + 1;
+    setVictoryModalData(null);
+
+    if (targetNextIndex < currentWorld.cards.length) {
+      setCurrentCardIndex(targetNextIndex);
+      setActiveView("level");
+      const nextCardToPlay = currentWorld.cards[targetNextIndex];
+      if (nextCardToPlay) {
+        setTimeout(() => {
+          handleSpeakCard(nextCardToPlay);
+        }, 400);
+      }
+    } else {
+      setActiveView("map");
+    }
+  };
+
+  // Handler for replaying current completed challenge
+  const handleReplayCurrentChallenge = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    kidsSFX.playPopBubble();
+    setFeedbackMessage(null);
+    setVictoryModalData(null);
+    setActiveView("level");
+    setTimeout(() => {
+      handleSpeakCard(currentCard);
+    }, 300);
+  };
+
+  // Handler for closing modal and returning to the Adventure Map to inspect progress
+  const handleGoToAdventureMap = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    kidsSFX.playPopBubble();
+    setFeedbackMessage(null);
+    setVictoryModalData(null);
+    setActiveView("map");
+  };
+
+  // Auto-advance countdown effect when victory modal is open
+  useEffect(() => {
+    if (!victoryModalData || isAutoAdvancePaused) return;
+
+    if (autoAdvanceCountdown <= 0) {
+      if (victoryModalData.nextCard) {
+        handleGoToNextChallenge();
+      } else {
+        handleGoToAdventureMap();
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoAdvanceCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [victoryModalData, autoAdvanceCountdown, isAutoAdvancePaused]);
 
   // Mascot speak
   const handleMascotClick = () => {
@@ -369,6 +489,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
         triggerDinoEatingAnimation();
       } else {
         kidsSFX.playCoinSound();
+        if (typeof window !== "undefined") {
+          fireParticles(window.innerWidth / 2, window.innerHeight / 2, "coins", 14);
+          fireParticles(window.innerWidth / 2, window.innerHeight / 2, "stars", 18);
+        }
       }
       setTimeout(() => setBlockHitEffect(null), 600);
       handleSuccessReward(3);
@@ -384,24 +508,32 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
     }
   };
 
-  // Drag & Drop for Dino Snack
+  // Drag & Drop for Dino Snack with magnetic eye & mouth tracking
   const handleDragStart = (e: React.DragEvent, optIndex: number) => {
     e.dataTransfer.setData("text/plain", optIndex.toString());
     setIsDraggingFood(true);
+    setMouthIntensity(0.7);
     kidsSFX.playPopBubble();
   };
 
   const handleDragEnd = () => {
     setIsDraggingFood(false);
+    setFoodDragPos(undefined);
+    setMouthIntensity(0);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDraggingFood(true);
+    setFoodDragPos({ x: e.clientX, y: e.clientY });
+    setMouthIntensity(0.85); // Dino opens mouth wide anticipating food!
   };
 
   const handleDropFood = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingFood(false);
+    setFoodDragPos(undefined);
+    setMouthIntensity(0);
     const data = e.dataTransfer.getData("text/plain");
     const optIndex = parseInt(data, 10);
     if (!isNaN(optIndex)) {
@@ -413,16 +545,26 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
     kidsSFX.playDinoMunch();
     setMascotMood("eating");
     setMouthIntensity(1.0);
+    setFoodDragPos(undefined);
 
-    // Crunch sequence
+    // Crunch sequence with heart/spark particles
+    if (typeof window !== "undefined") {
+      fireParticles(window.innerWidth * 0.35, window.innerHeight * 0.45, "sparks", 18);
+    }
+
     setTimeout(() => setMouthIntensity(0.2), 150);
-    setTimeout(() => setMouthIntensity(0.9), 300);
+    setTimeout(() => {
+      setMouthIntensity(0.95);
+      if (typeof window !== "undefined") {
+        fireParticles(window.innerWidth * 0.35, window.innerHeight * 0.45, "coins", 8);
+      }
+    }, 300);
     setTimeout(() => setMouthIntensity(0.1), 450);
-    setTimeout(() => setMouthIntensity(0.8), 600);
+    setTimeout(() => setMouthIntensity(0.85), 600);
     setTimeout(() => {
       setMascotMood("celebrating");
       setMouthIntensity(0);
-    }, 800);
+    }, 850);
   };
 
   // Voice Jump Microphone Practice with webkitSpeechRecognition
@@ -446,6 +588,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       recognition.maxAlternatives = 1;
 
       setIsListening(true);
+      setVoiceJumpTranscript("");
       setMascotMood("listening");
       setFeedbackMessage({
         text: `¡${currentCompanion.name} está escuchando! Di en voz alta: "${currentCard.englishWord}"...`,
@@ -454,7 +597,9 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
       recognition.onresult = (event: any) => {
         setIsListening(false);
-        const transcript = event.results[0][0].transcript.toLowerCase();
+        const rawTranscript = event.results[0][0].transcript;
+        setVoiceJumpTranscript(rawTranscript);
+        const transcript = rawTranscript.toLowerCase();
         const target = currentCard.englishWord.toLowerCase();
 
         // High tolerance recognition for kids
@@ -464,7 +609,14 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           (ageGroup === "preschool" && transcript.length >= 2);
 
         if (isAcceptable) {
-          playJumpSound();
+          setIsMascotJumping(true);
+          kidsSFX.playJumpSound();
+          setMascotMood("celebrating");
+          if (typeof window !== "undefined") {
+            fireParticles(window.innerWidth * 0.35, window.innerHeight * 0.45, "stars", 28);
+            fireParticles(window.innerWidth * 0.35, window.innerHeight * 0.45, "coins", 12);
+          }
+          setTimeout(() => setIsMascotJumping(false), 900);
           handleSuccessReward(3);
         } else {
           playErrorSoft();
@@ -579,16 +731,39 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       type: "success",
     });
 
-    if (autoAdvanceTimerRef.current) {
-      clearTimeout(autoAdvanceTimerRef.current);
-    }
-    autoAdvanceTimerRef.current = setTimeout(() => {
-      nextCard();
-    }, 2500);
+    const isLastCard = currentCardIndex === currentWorld.cards.length - 1;
+    const nextCardItem = !isLastCard ? currentWorld.cards[currentCardIndex + 1] : null;
 
-    setTimeout(() => {
-      setMascotMood("happy");
-    }, 2800);
+    // Trigger full celebratory modal with stars, rewards, and auto-advance
+    setVictoryModalData({
+      worldId: currentWorld.id,
+      worldTitle: currentWorld.spanishTitle,
+      worldIcon: currentWorld.icon,
+      cardIndex: currentCardIndex,
+      totalCards: currentWorld.cards.length,
+      completedCard: currentCard,
+      nextCard: nextCardItem,
+      starsEarned: 3,
+      coinsEarned: newCombo >= 3 ? 25 : 15,
+      combo: newCombo,
+      isWorldBoss: isLastCard,
+    });
+    setAutoAdvanceCountdown(4);
+    setIsAutoAdvancePaused(false);
+
+    // Audio narration celebrating the specific achievement in native voice
+    const voiceLine = isLastCard
+      ? `¡Felicidades! ¡Completaste el reto final del ${currentWorld.spanishTitle}! ¡Eres un super campeón!`
+      : `¡Increíble! ¡Has completado el Reto ${currentCardIndex + 1}: ${currentCard.englishWord}! ¡Ahora vamos al Reto ${currentCardIndex + 2}: ${nextCardItem?.englishWord}!`;
+
+    speakText(
+      voiceLine,
+      currentCompanion.avatarConfig,
+      undefined,
+      undefined,
+      undefined,
+      { forceLang: "es-ES", rateMultiplier: 0.95 }
+    );
   };
 
   // Dino Egg Hatching Modal Trigger
@@ -684,11 +859,25 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       {/* 2D Canvas Particle Engine (60 FPS Native Confetti & Stars) */}
       <ParticleEngine />
 
-      {/* Background Animated Glows */}
+      {/* Background Animated Glows & Parallax Floating Clouds */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-10 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
         <div className="absolute top-1/2 right-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl" />
+
+        {/* Ambient floating sky elements */}
+        <div className="absolute top-14 left-10 text-3xl opacity-20 select-none animate-bounce" style={{ animationDuration: "6s" }}>
+          ☁️
+        </div>
+        <div className="absolute top-28 right-20 text-4xl opacity-15 select-none animate-pulse" style={{ animationDuration: "7s" }}>
+          ☁️
+        </div>
+        <div className="absolute top-60 left-1/3 text-2xl opacity-10 select-none animate-bounce" style={{ animationDuration: "8s" }}>
+          ☁️
+        </div>
+        <div className="absolute top-44 right-1/4 text-2xl opacity-25 select-none animate-pulse" style={{ animationDuration: "4s" }}>
+          🦋
+        </div>
       </div>
 
       {/* Top Header Bar for Kids */}
@@ -864,7 +1053,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                     onClick={() => {
                       kidsSFX.playPopBubble();
                       setSelectedWorldId(world.id);
-                      setCurrentCardIndex(0);
+                      const nextUncompletedIdx = world.cards.findIndex(
+                        (c) => !kidsProgress.completedCards.includes(c.id)
+                      );
+                      setCurrentCardIndex(nextUncompletedIdx >= 0 ? nextUncompletedIdx : 0);
                     }}
                     className={`p-4 rounded-3xl border text-left transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
                       isSelected
@@ -934,8 +1126,14 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => openLevel(0)}
-                    className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 transition active:scale-95"
+                    onClick={() => {
+                      const nextUncompletedIdx = currentWorld.cards.findIndex(
+                        (c) => !kidsProgress.completedCards.includes(c.id)
+                      );
+                      const targetIdx = nextUncompletedIdx >= 0 ? nextUncompletedIdx : 0;
+                      openLevel(targetIdx);
+                    }}
+                    className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation select-none"
                   >
                     <Play className="w-4 h-4 fill-slate-950" />
                     <span>Jugar Siguiente Nivel</span>
@@ -1095,11 +1293,13 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                 <span>Volver al Mapa</span>
               </button>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
                 {[
-                  { id: "dino_snack", label: "Dino Snack (Arrastrar)", icon: "🍎" },
-                  { id: "voice_jump", label: "Voice Jump (Micrófono)", icon: "🎤" },
-                  { id: "block_bash", label: "Block Bash (8-bit)", icon: "🧱" },
+                  { id: "dino_snack", label: "Dino Snack", icon: "🍎" },
+                  { id: "voice_jump", label: "Voice Jump", icon: "🎤" },
+                  { id: "block_bash", label: "Block Bash", icon: "🧱" },
+                  { id: "bubble_spelling", label: "Bubble Pop", icon: "🫧" },
+                  { id: "pipe_tunnel", label: "Dino Pipe", icon: "🟢" },
                 ].map((gm) => (
                   <button
                     key={gm.id}
@@ -1107,7 +1307,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                       kidsSFX.playPopBubble();
                       setGameMode(gm.id as KidsGameMode);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap active:scale-95 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap active:scale-95 cursor-pointer ${
                       gameMode === gm.id
                         ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/30"
                         : "bg-slate-800/80 text-slate-400 hover:text-slate-200"
@@ -1164,11 +1364,21 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                   onClick={handleMascotClick}
                   className={`w-full max-w-[270px] h-64 sm:h-72 rounded-3xl bg-gradient-to-tr ${
                     currentCompanion.themeColor
-                  } p-1 shadow-2xl shadow-orange-500/25 cursor-pointer group transition duration-300 relative flex items-center justify-center ${
+                  } p-1 shadow-2xl shadow-orange-500/25 cursor-pointer group transition-all duration-300 relative flex items-center justify-center ${
+                    isMascotJumping ? "-translate-y-8 scale-105 rotate-[-3deg] shadow-cyan-400/50" : ""
+                  } ${
                     isDraggingFood ? "ring-4 ring-amber-400 scale-105" : "hover:scale-[1.02]"
                   }`}
                   title={`¡Arrastra la comida hacia ${currentCompanion.name} para alimentarlo!`}
                 >
+                  {/* Sonic Wave Rings during Voice Jump listening */}
+                  {isListening && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10">
+                      <div className="w-72 h-72 rounded-full border-4 border-cyan-400/40 animate-ping" />
+                      <div className="w-80 h-80 rounded-full border-2 border-pink-400/30 animate-pulse" />
+                    </div>
+                  )}
+
                   <div className="w-full h-full bg-slate-950/90 rounded-[22px] overflow-hidden relative flex flex-col items-center justify-center p-2">
                     <Avatar2DCanvas
                       config={currentCompanion.avatarConfig}
@@ -1187,6 +1397,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                           : "idle"
                       }
                       mouthIntensity={mouthIntensity}
+                      stageMousePos={foodDragPos}
                       onMascotClick={handleMascotClick}
                     />
 
@@ -1196,12 +1407,23 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
                     {/* Feeding Zone Drop Hint Banner */}
                     {gameMode === "dino_snack" && (
-                      <div className="absolute bottom-2 left-2 right-2 py-1 px-2 rounded-xl bg-amber-500/90 backdrop-blur-md text-slate-950 font-black text-[10px] text-center shadow-lg border border-white/30 z-10 animate-bounce">
-                        🍖 ¡Arrastra la comida aquí para alimentar!
+                      <div className={`absolute bottom-2 left-2 right-2 py-1 px-2 rounded-xl text-slate-950 font-black text-[10px] text-center shadow-lg border border-white/30 z-10 transition-all ${
+                        isDraggingFood
+                          ? "bg-emerald-400 text-slate-950 animate-pulse scale-105"
+                          : "bg-amber-500/90 backdrop-blur-md animate-bounce"
+                      }`}>
+                        {isDraggingFood ? "😋 ¡Suelta la comida en mi boca!" : "🍖 ¡Arrastra la comida aquí!"}
                       </div>
                     )}
                   </div>
                 </div>
+
+                {/* Dynamic Floor Shadow beneath Mascot */}
+                <div
+                  className={`w-36 h-3 rounded-full bg-black/60 blur-md mx-auto transition-all duration-300 mt-1 ${
+                    isMascotJumping ? "scale-50 opacity-25" : "scale-100 opacity-70"
+                  }`}
+                />
 
                 {/* Mascot Soundboard */}
                 <div className="mt-3 text-center w-full flex flex-col items-center gap-2">
@@ -1234,7 +1456,13 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
               {/* Right Column: Giant Minigame Challenge Card */}
               <div className="lg:col-span-8 flex flex-col items-center">
-                <div className="w-full max-w-xl bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 border-2 border-slate-700/80 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
+                <div
+                  className={`w-full max-w-xl bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 border-2 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden flex flex-col items-center text-center transition-all duration-300 ${
+                    comboCount >= 3
+                      ? "border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.35)] ring-4 ring-amber-400/40"
+                      : "border-slate-700/80"
+                  }`}
+                >
                   {/* Top Level Mission Info */}
                   <div className="w-full flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
@@ -1302,13 +1530,13 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                                   setIsDraggingFood(false);
                                   handleOptionSelect(idx);
                                 }}
-                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing transition-all duration-200 active:scale-95 select-none touch-manipulation ${
+                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing transition-all duration-200 active:scale-90 hover:scale-105 select-none touch-manipulation shadow-lg ${
                                   isHitting
-                                    ? "bg-amber-400 text-slate-950 border-white scale-110 shadow-xl shadow-amber-400/50"
+                                    ? "bg-gradient-to-tr from-amber-300 to-yellow-400 text-slate-950 border-white scale-110 shadow-xl shadow-amber-400/50 animate-bounce"
                                     : "bg-gradient-to-b from-rose-600/90 to-amber-600/90 hover:from-rose-500 hover:to-amber-500 text-white border-amber-400 shadow-md shadow-rose-950/50"
                                 }`}
                               >
-                                <span className="text-2xl">🍽️</span>
+                                <span className="text-2xl animate-pulse">🍽️</span>
                                 <span className="truncate w-full">{opt}</span>
                               </div>
                             );
@@ -1321,29 +1549,112 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                   {/* MINIGAME 2: VOICE JUMP (MICROPHONE RETO) */}
                   {gameMode === "voice_jump" && (
                     <div className="w-full my-2 flex flex-col items-center gap-3">
-                      <p className="text-xs text-cyan-300 font-bold">
-                        🎤 ¡Toca el micrófono y pronuncia la palabra fuerte para que {currentCompanion.name.split(" ")[0]} salte!
-                      </p>
-                      <button
-                        onClick={handleVoiceJumpPractice}
-                        className={`w-full py-4 px-6 rounded-3xl font-black text-sm sm:text-base shadow-2xl transition active:scale-95 flex items-center justify-center gap-2 ${
-                          isListening
-                            ? "bg-rose-600 text-white animate-pulse shadow-rose-600/40 ring-4 ring-rose-400/50"
-                            : "bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-cyan-500/30"
-                        }`}
-                      >
-                        {isListening ? (
-                          <>
-                            <MicOff className="w-5 h-5 animate-spin" />
-                            <span>¡Escuchando tu voz...!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-5 h-5" />
-                            <span>¡Decir en Inglés para Saltar! (+25 🪙)</span>
-                          </>
+                      {/* Subtitle & Target Guide */}
+                      <div className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30">
+                        <div className="flex items-center gap-2 text-left">
+                          <span className="text-2xl">{currentCard.emoji}</span>
+                          <div>
+                            <div className="text-[11px] text-cyan-300 font-bold uppercase tracking-wider">
+                              Di en voz alta para saltar:
+                            </div>
+                            <div className="text-sm font-black text-white">
+                              "{currentCard.englishWord}"{" "}
+                              <span className="text-xs text-slate-400 font-normal">
+                                ({currentCard.spanishMeaning})
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          id="listen-voice-jump-target-btn"
+                          onClick={() => {
+                            kidsSFX.playPopBubble();
+                            speakText(
+                              currentCard.englishWord,
+                              currentCompanion.avatarConfig,
+                              undefined,
+                              undefined,
+                              undefined,
+                              { forceLang: "en-US", rateMultiplier: 0.85 }
+                            );
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-black flex items-center gap-1.5 transition cursor-pointer border border-cyan-500/30"
+                          title="Escuchar pronunciación modelo"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>Escuchar</span>
+                        </button>
+                      </div>
+
+                      {/* Main Mic Button with Pulsing Wave Indicator */}
+                      <div className="w-full relative">
+                        {isListening && (
+                          <div className="absolute -inset-1 rounded-3xl bg-rose-500/30 animate-pulse blur-sm pointer-events-none" />
                         )}
-                      </button>
+
+                        <button
+                          type="button"
+                          id="kids-voice-jump-record-btn"
+                          onClick={handleVoiceJumpPractice}
+                          className={`w-full py-4 px-6 rounded-3xl font-black text-sm sm:text-base shadow-2xl transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer select-none relative z-10 ${
+                            isListening
+                              ? "bg-gradient-to-r from-rose-500 to-red-600 text-white animate-pulse shadow-rose-600/40 ring-4 ring-rose-400/50"
+                              : "bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-cyan-500/30"
+                          }`}
+                        >
+                          {isListening ? (
+                            <>
+                              <MicOff className="w-5 h-5 animate-spin" />
+                              <span>¡Escuchando tu voz! Habla ahora...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="w-5 h-5" />
+                              <span>¡Tocar Micrófono y Hablar para Saltar! (+25 🪙)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Real-time speech transcript bubble */}
+                      {voiceJumpTranscript && (
+                        <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs font-medium text-cyan-200 animate-in fade-in">
+                          Escuchamos: <span className="font-bold font-mono">"{voiceJumpTranscript}"</span>
+                        </div>
+                      )}
+
+                      {/* Action Bar: Test de Funcionamiento + Simulación Rápida */}
+                      <div className="w-full grid grid-cols-2 gap-2 mt-1">
+                        <button
+                          type="button"
+                          id="open-voice-jump-test-modal-btn"
+                          onClick={() => {
+                            kidsSFX.playPopBubble();
+                            setIsVoiceJumpTestModalOpen(true);
+                          }}
+                          className="py-2.5 px-3 rounded-2xl bg-slate-800/90 hover:bg-slate-750 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
+                        >
+                          <Sliders className="w-3.5 h-3.5" />
+                          <span>🛠️ Prueba de Micrófono</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          id="quick-simulate-jump-btn"
+                          onClick={() => {
+                            kidsSFX.playJumpSound();
+                            setVoiceJumpTranscript(currentCard.englishWord);
+                            handleSuccessReward(3);
+                          }}
+                          className="py-2.5 px-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
+                          title="Simula un salto exitoso con voz instantáneamente para probar"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          <span>⚡ Salto de Prueba (Simular)</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1360,14 +1671,23 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                             return (
                               <button
                                 key={idx}
-                                onClick={() => handleOptionSelect(idx)}
-                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-90 ${
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  if (typeof window !== "undefined") {
+                                    fireParticles(rect.left + rect.width / 2, rect.top, "coins", 10);
+                                    fireParticles(rect.left + rect.width / 2, rect.top, "sparks", 12);
+                                  }
+                                  handleOptionSelect(idx);
+                                }}
+                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-90 cursor-pointer ${
                                   isHitting
-                                    ? "bg-amber-400 text-slate-950 border-white scale-110 shadow-xl shadow-amber-400/50"
-                                    : "bg-gradient-to-b from-amber-600/90 to-amber-700/90 hover:from-amber-500 hover:to-amber-600 text-white border-amber-400 shadow-md shadow-amber-900/50"
+                                    ? "bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 border-white -translate-y-4 scale-110 shadow-2xl shadow-yellow-400/60 ring-4 ring-yellow-300 animate-bounce"
+                                    : "bg-gradient-to-b from-amber-600/90 to-amber-700/90 hover:from-amber-500 hover:to-amber-600 text-white border-amber-400 shadow-md shadow-amber-900/50 hover:-translate-y-1"
                                 }`}
                               >
-                                <span className="text-xl sm:text-2xl">❓</span>
+                                <span className={`text-xl sm:text-2xl transition-transform duration-200 ${isHitting ? "rotate-12 scale-125" : ""}`}>
+                                  {isHitting ? "⭐" : "❓"}
+                                </span>
                                 <span className="truncate w-full">{opt}</span>
                               </button>
                             );
@@ -1375,6 +1695,35 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {/* MINIGAME 4: BUBBLE POP SPELLING */}
+                  {gameMode === "bubble_spelling" && (
+                    <BubblePopSpellingMinigame
+                      targetWord={currentCard.englishWord}
+                      targetEmoji={currentCard.emoji}
+                      spanishTranslation={currentCard.spanishMeaning}
+                      companionName={currentCompanion.name}
+                      companionAvatarConfig={currentCompanion.avatarConfig}
+                      onSuccess={() => handleSuccessReward(3)}
+                    />
+                  )}
+
+                  {/* MINIGAME 5: DINO PIPE TUNNEL */}
+                  {(gameMode === "pipe_tunnel" || gameMode === "pipe_listening") && (
+                    <DinoPipeTunnelMinigame
+                      targetWord={currentCard.englishWord}
+                      targetEmoji={currentCard.emoji}
+                      spanishTranslation={currentCard.spanishMeaning}
+                      companionName={currentCompanion.name}
+                      companionAvatarConfig={currentCompanion.avatarConfig}
+                      distractorOptions={
+                        currentCard.options?.filter(
+                          (opt) => opt.toLowerCase() !== currentCard.englishWord.toLowerCase()
+                        )
+                      }
+                      onSuccess={() => handleSuccessReward(3)}
+                    />
                   )}
 
                   {/* Feedback Message Alert with prominent Victory Next Card button */}
@@ -1647,6 +1996,209 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/* LEVEL VICTORY & NEXT CHALLENGE MODAL (¡RETO SUPERADO!)        */}
+      {/* ============================================================ */}
+      {victoryModalData && (
+        <div className="fixed inset-0 z-[130] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-400/80 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl shadow-amber-500/20 relative flex flex-col items-center text-center animate-in zoom-in-95 duration-200 overflow-hidden">
+            {/* Top decorative glow bar */}
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400" />
+
+            {/* Close / Dismiss button */}
+            <button
+              type="button"
+              id="kids-victory-close-btn"
+              onClick={handleGoToAdventureMap}
+              className="absolute top-3 right-3 p-2 text-slate-400 hover:text-white rounded-full bg-slate-800/80 hover:bg-slate-700 transition cursor-pointer"
+              title="Volver al mapa"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/40 text-amber-300 text-xs font-black tracking-wider uppercase mb-2">
+              <PartyPopper className="w-4 h-4 text-amber-400 animate-bounce" />
+              <span>
+                {victoryModalData.isWorldBoss
+                  ? `👑 ¡Mundo Conquistado!`
+                  : `🎉 ¡Reto ${victoryModalData.cardIndex + 1} Completado!`}
+              </span>
+            </div>
+
+            {/* 3 Golden Stars Celebration */}
+            <div className="flex items-center justify-center gap-2.5 my-2">
+              {[1, 2, 3].map((starIdx) => (
+                <div
+                  key={starIdx}
+                  className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-yellow-100 flex items-center justify-center shadow-lg shadow-amber-400/50 animate-bounce"
+                  style={{ animationDelay: `${starIdx * 120}ms` }}
+                >
+                  <Star className="w-7 h-7 fill-slate-950 text-slate-950" />
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-black text-white mt-1 mb-1">
+              {victoryModalData.isWorldBoss
+                ? `¡Completaste todo el ${victoryModalData.worldTitle}!`
+                : `¡Excelente! ¡Aprendiste "${victoryModalData.completedCard.englishWord}"!`}
+            </h3>
+
+            {/* Card Info Box */}
+            <div className="w-full bg-slate-950/70 border border-slate-800 rounded-2xl p-3 my-2.5 flex items-center justify-between gap-3">
+              <div className="w-12 h-12 rounded-xl bg-slate-850 border border-amber-400/30 flex items-center justify-center text-3xl shrink-0">
+                {victoryModalData.completedCard.emoji}
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-sm font-black text-white">
+                  {victoryModalData.completedCard.englishWord}
+                </div>
+                <div className="text-xs text-amber-300 font-bold">
+                  {victoryModalData.completedCard.spanishMeaning}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                  "{victoryModalData.completedCard.phoneticSimple}"
+                </div>
+              </div>
+              <button
+                type="button"
+                id="kids-repeat-word-audio-btn"
+                onClick={() => handleSpeakCard(victoryModalData.completedCard)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 transition cursor-pointer"
+                title="Repetir pronunciación"
+              >
+                <Volume2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Rewards Won */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="px-3 py-1 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-black flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>+3 Estrellas</span>
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-black flex items-center gap-1">
+                <span>🪙</span>
+                <span>+{victoryModalData.coinsEarned} Monedas</span>
+              </span>
+            </div>
+
+            {/* Next Challenge Preview */}
+            {victoryModalData.nextCard ? (
+              <div className="w-full bg-gradient-to-r from-emerald-950/60 to-teal-950/60 border border-emerald-500/50 rounded-2xl p-3 mb-3 text-left">
+                <div className="flex items-center justify-between text-[11px] font-black text-emerald-400 uppercase tracking-wider mb-1">
+                  <span>Próximo Reto Desbloqueado:</span>
+                  <span>Reto {victoryModalData.cardIndex + 2} de {victoryModalData.totalCards}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{victoryModalData.nextCard.emoji}</span>
+                  <div>
+                    <div className="text-xs font-black text-white">
+                      {victoryModalData.nextCard.englishWord}
+                    </div>
+                    <div className="text-[11px] text-emerald-300 font-medium">
+                      {victoryModalData.nextCard.spanishMeaning}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Auto-Advance Countdown Bar */}
+            {victoryModalData.nextCard && (
+              <div className="w-full mb-3">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold mb-1">
+                  <span>
+                    {isAutoAdvancePaused
+                      ? "⏸️ Avance en pausa"
+                      : `🚀 Pasando al Reto ${victoryModalData.cardIndex + 2} en ${autoAdvanceCountdown}s...`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoAdvancePaused(!isAutoAdvancePaused)}
+                    className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {isAutoAdvancePaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                    <span>{isAutoAdvancePaused ? "Reanudar" : "Pausar"}</span>
+                  </button>
+                </div>
+                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-all duration-1000 ease-linear"
+                    style={{
+                      width: isAutoAdvancePaused ? "100%" : `${(autoAdvanceCountdown / 4) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="w-full flex flex-col gap-2">
+              {victoryModalData.nextCard ? (
+                <button
+                  type="button"
+                  id="kids-next-challenge-btn"
+                  onClick={handleGoToNextChallenge}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer touch-manipulation select-none"
+                >
+                  <span>¡Jugar Reto {victoryModalData.cardIndex + 2}: {victoryModalData.nextCard.englishWord}!</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="kids-finish-world-btn"
+                  onClick={handleGoToAdventureMap}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer touch-manipulation select-none"
+                >
+                  <span>🏆 ¡Ver mi Corona en el Mapa!</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  id="kids-return-map-btn"
+                  onClick={handleGoToAdventureMap}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation select-none"
+                >
+                  <span>🗺️ Ver Mapa</span>
+                </button>
+                <button
+                  type="button"
+                  id="kids-replay-challenge-btn"
+                  onClick={handleReplayCurrentChallenge}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer touch-manipulation select-none"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Repetir Reto</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Jump Microphone Test & Diagnostics Modal */}
+      <VoiceJumpTestModal
+        isOpen={isVoiceJumpTestModalOpen}
+        onClose={() => setIsVoiceJumpTestModalOpen(false)}
+        targetWord={currentCard.englishWord}
+        targetEmoji={currentCard.emoji}
+        phoneticGuide={currentCard.phoneticSimple}
+        spanishTranslation={currentCard.spanishMeaning}
+        companionName={currentCompanion.name}
+        companionAvatarConfig={currentCompanion.avatarConfig}
+        onTriggerJumpTest={() => {
+          setIsVoiceJumpTestModalOpen(false);
+          kidsSFX.playJumpSound();
+          handleSuccessReward(3);
+        }}
+      />
 
       {/* Floating Mobile Quick Switch to Adults */}
       <div className="fixed bottom-4 right-4 z-[120] sm:hidden">
