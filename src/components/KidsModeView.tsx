@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   KIDS_WORLDS,
   STICKER_CATALOG,
@@ -58,6 +58,7 @@ import {
   Gamepad2,
   Utensils,
   VolumeX,
+  GraduationCap,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { ModeSwitcher } from "./ModeSwitcher";
@@ -263,6 +264,34 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   const [comboCount, setComboCount] = useState<number>(0);
   const [isDraggingFood, setIsDraggingFood] = useState<boolean>(false);
   const [mouthIntensity, setMouthIntensity] = useState<number>(0);
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up auto-advance timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Safe and guaranteed switch to Adult Mode (clears timers, drags, and triggers sound)
+  const handleSwitchToAdults = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    setIsDraggingFood(false);
+    try {
+      kidsSFX.playPopBubble();
+    } catch (e) {}
+    if (onExperienceModeChange) {
+      onExperienceModeChange("adults");
+    }
+    if (onSwitchToAdultsMode) {
+      onSwitchToAdultsMode();
+    }
+  };
 
   const currentCompanion =
     KIDS_COMPANIONS.find((c) => c.id === selectedCompanionId) || KIDS_COMPANIONS[0];
@@ -360,6 +389,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
     e.dataTransfer.setData("text/plain", optIndex.toString());
     setIsDraggingFood(true);
     kidsSFX.playPopBubble();
+  };
+
+  const handleDragEnd = () => {
+    setIsDraggingFood(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -477,6 +510,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
         spread: 80,
         origin: { y: 0.7 },
         colors: ["#f59e0b", "#ec4899", "#3b82f6", "#10b981", "#8b5cf6"],
+        zIndex: 25, // Behind header (z-100) and interactive buttons
       });
     } catch (e) {}
 
@@ -545,6 +579,13 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       type: "success",
     });
 
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+    }
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      nextCard();
+    }, 2500);
+
     setTimeout(() => {
       setMascotMood("happy");
     }, 2800);
@@ -567,6 +608,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
         spread: 100,
         origin: { y: 0.5 },
         colors: ["#ffd700", "#ff69b4", "#00ffff", "#7cfc00"],
+        zIndex: 25,
       });
     } catch (e) {}
 
@@ -605,6 +647,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   };
 
   const openLevel = (cardIndex: number) => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     playPopSound();
     setCurrentCardIndex(cardIndex);
     setFeedbackMessage(null);
@@ -612,12 +658,20 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   };
 
   const nextCard = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     playPopSound();
     setFeedbackMessage(null);
     setCurrentCardIndex((prev) => (prev + 1) % currentWorld.cards.length);
   };
 
   const prevCard = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     playPopSound();
     setFeedbackMessage(null);
     setCurrentCardIndex(
@@ -638,7 +692,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       </div>
 
       {/* Top Header Bar for Kids */}
-      <header className="w-full bg-slate-900/95 backdrop-blur-2xl border-b border-amber-500/20 sticky top-0 z-30 px-2 sm:px-6 py-2 shadow-lg shadow-black/40">
+      <header className="w-full bg-slate-900/95 backdrop-blur-2xl border-b border-amber-500/20 sticky top-0 z-[100] px-2 sm:px-6 py-2 shadow-lg shadow-black/40">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Logo & Adventure Title */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -647,7 +701,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                 kidsSFX.playPopBubble();
                 setActiveView("map");
               }}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-amber-500 to-rose-500 p-0.5 shadow-lg shadow-emerald-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-amber-500 to-rose-500 p-0.5 shadow-lg shadow-emerald-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition cursor-pointer"
               title="Volver al Mapa de Aventura"
             >
               <span className="text-lg sm:text-xl">🗺️</span>
@@ -665,7 +719,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           </div>
 
           {/* Right Controls: Coins, Stars, Shop & High-Visibility Adults Mode Switch */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 relative z-[110]">
             {/* Fossil Coins */}
             <div
               className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black shadow-sm cursor-pointer hover:bg-amber-500/30 transition active:scale-95"
@@ -693,16 +747,28 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
             </div>
 
             {/* Unified High-Visibility Mode Switcher (Adult vs Kid) */}
-            <ModeSwitcher
-              currentMode="kids"
-              onModeChange={(mode) => {
-                if (onExperienceModeChange) {
-                  onExperienceModeChange(mode);
-                } else if (mode === "adults") {
-                  onSwitchToAdultsMode();
-                }
-              }}
-            />
+            <div className="relative z-[120]">
+              <ModeSwitcher
+                currentMode="kids"
+                onModeChange={(mode) => {
+                  if (mode === "adults") {
+                    handleSwitchToAdults();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Dedicated Direct Adult Mode Button for immediate 1-tap switch */}
+            <button
+              type="button"
+              id="kids-header-btn-adult-mode"
+              onClick={handleSwitchToAdults}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950/90 hover:bg-slate-800 border-2 border-emerald-500/60 hover:border-emerald-400 text-emerald-300 text-xs font-black transition active:scale-95 shadow-sm cursor-pointer touch-manipulation select-none"
+              title="Volver a la interfaz de Adultos"
+            >
+              <GraduationCap className="w-4 h-4 text-emerald-400" />
+              <span>Modo Adultos</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1231,8 +1297,12 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                                 key={idx}
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, idx)}
-                                onClick={() => handleOptionSelect(idx)}
-                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing transition-all duration-200 active:scale-95 ${
+                                onDragEnd={handleDragEnd}
+                                onClick={() => {
+                                  setIsDraggingFood(false);
+                                  handleOptionSelect(idx);
+                                }}
+                                className={`p-3 sm:p-4 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing transition-all duration-200 active:scale-95 select-none touch-manipulation ${
                                   isHitting
                                     ? "bg-amber-400 text-slate-950 border-white scale-110 shadow-xl shadow-amber-400/50"
                                     : "bg-gradient-to-b from-rose-600/90 to-amber-600/90 hover:from-rose-500 hover:to-amber-500 text-white border-amber-400 shadow-md shadow-rose-950/50"
@@ -1307,26 +1377,45 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                     </div>
                   )}
 
-                  {/* Feedback Message Alert */}
+                  {/* Feedback Message Alert with prominent Victory Next Card button */}
                   {feedbackMessage && (
                     <div
-                      className={`w-full p-2.5 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 animate-in fade-in zoom-in-95 duration-200 my-2 ${
+                      className={`w-full p-3 rounded-2xl border text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-2.5 animate-in fade-in zoom-in-95 duration-200 my-2 relative z-20 ${
                         feedbackMessage.type === "success"
-                          ? "bg-emerald-950/90 border-emerald-500 text-emerald-200"
+                          ? "bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-lg shadow-emerald-900/30"
                           : feedbackMessage.type === "try_again"
-                          ? "bg-amber-950/90 border-amber-500 text-amber-200"
+                          ? "bg-amber-950/90 border-amber-500 text-amber-200 shadow-lg shadow-amber-900/30"
                           : "bg-blue-950/90 border-blue-500 text-blue-200"
                       }`}
                     >
-                      <span>{feedbackMessage.text}</span>
+                      <span className="flex-1 text-center sm:text-left">{feedbackMessage.text}</span>
+                      {feedbackMessage.type === "success" && (
+                        <button
+                          type="button"
+                          id="kids-victory-next-btn"
+                          onClick={() => {
+                            if (autoAdvanceTimerRef.current) {
+                              clearTimeout(autoAdvanceTimerRef.current);
+                              autoAdvanceTimerRef.current = null;
+                            }
+                            nextCard();
+                          }}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/30 transition active:scale-95 cursor-pointer shrink-0 touch-manipulation select-none"
+                        >
+                          <span>Siguiente Tarjeta</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {/* Level Controls Footer */}
-                  <div className="w-full flex items-center justify-between pt-3 border-t border-slate-800 mt-2">
+                  <div className="w-full flex items-center justify-between pt-3 border-t border-slate-800 mt-2 relative z-20">
                     <button
+                      type="button"
+                      id="kids-footer-prev-btn"
                       onClick={prevCard}
-                      className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition"
+                      className="flex items-center gap-1 text-xs font-bold text-slate-300 hover:text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition cursor-pointer touch-manipulation select-none"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Anterior</span>
@@ -1346,8 +1435,10 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                     </div>
 
                     <button
+                      type="button"
+                      id="kids-footer-next-btn"
                       onClick={nextCard}
-                      className="flex items-center gap-1 text-xs font-bold text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-xl hover:bg-slate-800 transition"
+                      className="flex items-center gap-1.5 text-xs font-black text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-3.5 py-1.5 rounded-xl transition active:scale-95 cursor-pointer touch-manipulation select-none shadow-sm"
                     >
                       <span>Siguiente</span>
                       <ChevronRight className="w-4 h-4" />
@@ -1558,10 +1649,12 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
       )}
 
       {/* Floating Mobile Quick Switch to Adults */}
-      <div className="fixed bottom-4 right-4 z-40 sm:hidden">
+      <div className="fixed bottom-4 right-4 z-[120] sm:hidden">
         <button
-          onClick={onSwitchToAdultsMode}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-900/95 border-2 border-indigo-500/80 text-white shadow-xl shadow-black/80 text-xs font-black backdrop-blur-md active:scale-90 transition"
+          type="button"
+          id="kids-floating-btn-adults"
+          onClick={handleSwitchToAdults}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-slate-900/95 border-2 border-indigo-500 text-white shadow-2xl shadow-black/80 text-xs font-black backdrop-blur-md active:scale-90 transition cursor-pointer touch-manipulation select-none"
         >
           <span className="text-sm">💼</span>
           <span>Modo Adultos</span>

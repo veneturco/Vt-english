@@ -25,8 +25,12 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
 
   const handleSelect = (mode: AppExperienceMode) => {
     if (mode === currentMode) return;
-    haptics.medium();
-    soundFx.playPop();
+    try {
+      haptics.medium();
+      soundFx.playPop();
+    } catch (e) {
+      // Audio or haptic failure shouldn't prevent mode change
+    }
     onModeChange(mode);
   };
 
@@ -107,10 +111,10 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
         type="button"
         id="mode-switch-btn-adults"
         onClick={() => handleSelect("adults")}
-        className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-black transition-all duration-150 relative z-10 cursor-pointer ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-black transition-all duration-150 relative z-20 cursor-pointer touch-manipulation select-none active:scale-95 ${
           isAdults
             ? "text-emerald-300 font-extrabold"
-            : "text-slate-400 hover:text-slate-200"
+            : "text-slate-400 hover:text-slate-100"
         }`}
         title="Modo Adultos: Conversación IA, Lecciones CEFR y Fonética"
       >
