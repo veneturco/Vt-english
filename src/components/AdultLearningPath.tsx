@@ -13,6 +13,15 @@ import {
   ShieldAlert,
   Award,
   Zap,
+  PhoneCall,
+  Headphones,
+  BarChart3,
+  Briefcase,
+  Moon,
+  Sun,
+  Globe,
+  Plane,
+  Target,
 } from "lucide-react";
 import { CEFRLevel, RoleplayScenarioItem } from "../types";
 import { playPopSound, playCoinSound } from "../utils/audioSynth";
@@ -22,6 +31,7 @@ import {
   LearningPathProgress,
 } from "../utils/learningPathStorage";
 import { getDueFlashcardsCount } from "../utils/srs";
+import { IndustryTrack, DEFAULT_INDUSTRY_TRACK } from "../data/industryTracksData";
 
 export interface LessonNode {
   id: string;
@@ -240,6 +250,17 @@ export interface AdultLearningPathProps {
   onSwitchToKidsMode?: () => void;
   onOpenDailyBlitz?: () => void;
   onOpenCertificate?: (data: { unitTitle: string; unitNumber: number; cefrLevel: string }) => void;
+  onOpenVoiceCall?: () => void;
+  onOpenIndustryModal?: () => void;
+  onOpenSkillRadar?: () => void;
+  onOpenAudioImmersion?: () => void;
+  onOpenGlobalAccents?: () => void;
+  onOpenStarInterview?: () => void;
+  onOpenOfflineCommute?: () => void;
+  isAirplaneModeActive?: boolean;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
+  currentIndustry?: IndustryTrack;
 }
 
 export function AdultLearningPath({
@@ -266,6 +287,17 @@ export function AdultLearningPath({
   onSwitchToKidsMode,
   onOpenDailyBlitz,
   onOpenCertificate,
+  onOpenVoiceCall,
+  onOpenIndustryModal,
+  onOpenSkillRadar,
+  onOpenAudioImmersion,
+  onOpenGlobalAccents,
+  onOpenStarInterview,
+  onOpenOfflineCommute,
+  isAirplaneModeActive = false,
+  isDarkMode = false,
+  onToggleDarkMode,
+  currentIndustry = DEFAULT_INDUSTRY_TRACK,
 }: AdultLearningPathProps) {
   const [selectedNodeModal, setSelectedNodeModal] = useState<LessonNode | null>(null);
 
@@ -322,38 +354,66 @@ export function AdultLearningPath({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center pb-32">
-      
-      {/* 1. TOP BAR ELEGANTE & MINIMALISTA (DUOLINGO STYLE) */}
-      <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <div
+      className={`min-h-screen ${
+        isDarkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"
+      } flex flex-col items-center pb-32 transition-colors duration-200`}
+    >
+      {/* 1. TOP BAR ELEGANTE & MINIMALISTA CON ACCESO A HERRAMIENTAS EJECUTIVAS */}
+      <header
+        className={`sticky top-0 z-30 w-full ${
+          isDarkMode
+            ? "bg-slate-900/95 border-slate-800"
+            : "bg-white/95 border-slate-200/80"
+        } backdrop-blur-md border-b shadow-xs transition-colors`}
+      >
         <div className="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
-          
-          {/* Selector de Idioma Activo */}
+          {/* Selector de Idioma Activo y Nivel */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-base shadow-xs">
+            <div
+              className={`w-8 h-8 rounded-full ${
+                isDarkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"
+              } border flex items-center justify-center text-base shadow-xs`}
+            >
               🇺🇸
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-900 leading-tight">
+              <span
+                className={`text-xs font-bold ${
+                  isDarkMode ? "text-white" : "text-slate-900"
+                } leading-tight`}
+              >
                 English Pro
               </span>
-              <span className="text-[10px] font-semibold text-indigo-600">
+              <span className="text-[10px] font-semibold text-indigo-500">
                 Nivel {currentLevel} (CEFR)
               </span>
             </div>
           </div>
 
-          {/* Gamification Stats: Racha, Gemas y Test de Nivel */}
-          <div className="flex items-center gap-2.5">
+          {/* Gamification Stats & Quick Actions */}
+          <div className="flex items-center gap-2">
             {/* Racha con fuego */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-900 font-extrabold text-xs shadow-xs">
-              <Flame className="w-4 h-4 text-orange-500 fill-orange-500 animate-pulse" />
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${
+                isDarkMode
+                  ? "bg-amber-950/50 border-amber-800/80 text-amber-200"
+                  : "bg-amber-50 border-amber-200/80 text-amber-900"
+              } border font-extrabold text-xs shadow-xs`}
+            >
+              <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500 animate-pulse" />
               <span>{streakDays}</span>
             </div>
 
             {/* Gemas */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200/80 text-sky-900 font-extrabold text-xs shadow-xs">
-              <span className="text-sm">💎</span>
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${
+                isDarkMode
+                  ? "bg-sky-950/50 border-sky-800/80 text-sky-200"
+                  : "bg-sky-50 border-sky-200/80 text-sky-900"
+              } border font-extrabold text-xs shadow-xs`}
+            >
+              <span className="text-xs">💎</span>
               <span>{gemsCount}</span>
             </div>
 
@@ -362,29 +422,185 @@ export function AdultLearningPath({
               <button
                 type="button"
                 onClick={onOpenDailyBlitz}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs shadow-xs transition cursor-pointer"
                 title="Desafío rápido de 60 segundos"
               >
                 <Zap className="w-3.5 h-3.5 fill-white" />
-                <span className="hidden sm:inline">Blitz 60s</span>
+                <span className="hidden sm:inline">Blitz</span>
               </button>
             )}
 
-            {/* Test de nivel discreto */}
+            {/* Toggle Modo Oscuro Ejecutivo */}
+            {onToggleDarkMode && (
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className={`p-2 rounded-full border transition cursor-pointer ${
+                  isDarkMode
+                    ? "bg-slate-800 border-slate-700 text-amber-300 hover:bg-slate-700"
+                    : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+                }`}
+                title={isDarkMode ? "Cambiar a modo claro" : "Activar Modo Oscuro Ejecutivo"}
+              >
+                {isDarkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Barra de Acciones Ejecutivas: Industria, Llamada Manos Libres, Radar & Podcast */}
+        <div
+          className={`border-t ${
+            isDarkMode ? "border-slate-800/80 bg-slate-950/60" : "border-slate-200/60 bg-slate-50/70"
+          } px-4 py-2`}
+        >
+          <div className="max-w-xl mx-auto flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Especialidad / Industria */}
+            {onOpenIndustryModal && (
+              <button
+                type="button"
+                onClick={onOpenIndustryModal}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-indigo-950/50 hover:bg-indigo-900/60 border-indigo-500/40 text-indigo-300"
+                    : "bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-900"
+                }`}
+                title="Especialidad profesional activa"
+              >
+                <span>{currentIndustry.icon}</span>
+                <span className="font-extrabold">{currentIndustry.shortName}</span>
+              </button>
+            )}
+
+            {/* Llamada Manos Libres */}
+            {onOpenVoiceCall && (
+              <button
+                type="button"
+                onClick={onOpenVoiceCall}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-300"
+                    : "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-900"
+                }`}
+                title="Simulación de llamada telefónica manos libres"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Llamada</span>
+              </button>
+            )}
+
+            {/* Radar de Fluidez */}
+            {onOpenSkillRadar && (
+              <button
+                type="button"
+                onClick={onOpenSkillRadar}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-sky-950/50 hover:bg-sky-900/60 border-sky-500/40 text-sky-300"
+                    : "bg-sky-50 hover:bg-sky-100 border-sky-200 text-sky-900"
+                }`}
+                title="Radar de fluidez y analíticas"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-sky-500" />
+                <span>Radar</span>
+              </button>
+            )}
+
+            {/* Podcast / Audio Inmersión */}
+            {onOpenAudioImmersion && (
+              <button
+                type="button"
+                onClick={onOpenAudioImmersion}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-amber-950/50 hover:bg-amber-900/60 border-amber-500/40 text-amber-300"
+                    : "bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-900"
+                }`}
+                title="Podcast en segundo plano"
+              >
+                <Headphones className="w-3.5 h-3.5 text-amber-500" />
+                <span>Podcast</span>
+              </button>
+            )}
+
+            {/* Gimnasio de Acentos Globales */}
+            {onOpenGlobalAccents && (
+              <button
+                type="button"
+                onClick={onOpenGlobalAccents}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-blue-950/50 hover:bg-blue-900/60 border-blue-500/40 text-blue-300"
+                    : "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-900"
+                }`}
+                title="Entrenador de acentos internacionales (US, UK, IN, AU, EU)"
+              >
+                <Globe className="w-3.5 h-3.5 text-blue-500" />
+                <span>Acentos</span>
+              </button>
+            )}
+
+            {/* Entrenador de Entrevistas STAR */}
+            {onOpenStarInterview && (
+              <button
+                type="button"
+                onClick={onOpenStarInterview}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-teal-950/50 hover:bg-teal-900/60 border-teal-500/40 text-teal-300"
+                    : "bg-teal-50 hover:bg-teal-100 border-teal-200 text-teal-900"
+                }`}
+                title="Entrevistas de trabajo con Método STAR"
+              >
+                <Target className="w-3.5 h-3.5 text-teal-500" />
+                <span>STAR</span>
+              </button>
+            )}
+
+            {/* Paquetes Offline Metro / Avión */}
+            {onOpenOfflineCommute && (
+              <button
+                type="button"
+                onClick={onOpenOfflineCommute}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-purple-950/50 hover:bg-purple-900/60 border-purple-500/40 text-purple-300"
+                    : "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-900"
+                }`}
+                title="Descargar paquetes offline para el metro o avión"
+              >
+                <Plane className="w-3.5 h-3.5 text-purple-500" />
+                <span>Offline</span>
+              </button>
+            )}
+
+            {/* Test de nivel */}
             {onOpenPlacementTest && (
               <button
                 type="button"
                 onClick={onOpenPlacementTest}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border shrink-0 ${
+                  isDarkMode
+                    ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+                    : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+                }`}
                 title="Evaluar mi nivel CEFR"
               >
-                <Award className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="hidden sm:inline">Test</span>
+                <Award className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Test CEFR</span>
               </button>
             )}
           </div>
         </div>
       </header>
+
+      {/* Banner de Modo Avión Activo */}
+      {isAirplaneModeActive && (
+        <div className="w-full bg-linear-to-r from-amber-600 via-orange-600 to-amber-700 text-white text-xs font-bold py-2 px-4 shadow-md flex items-center justify-center gap-2 animate-fadeIn sticky top-[102px] z-20">
+          <Plane className="w-4 h-4 animate-pulse" />
+          <span>Modo Avión / Desconectado Activo: Todas las lecciones y audios funcionan desde la memoria local.</span>
+        </div>
+      )}
 
       {/* 2. FEED VERTICAL DE APRENDIZAJE: PRIORIZANDO LA RUTA DEL DÍA */}
       <main className="w-full max-w-xl mx-auto px-4 pt-4 sm:pt-6 flex flex-col gap-6">

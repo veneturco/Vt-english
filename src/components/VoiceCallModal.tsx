@@ -13,6 +13,7 @@ interface VoiceCallModalProps {
   onSendMessage: (text: string) => void;
   latestTutorMessage: string;
   latestSpanishTranslation?: string;
+  onRewardXp?: (xp: number) => void;
 }
 
 export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
@@ -25,6 +26,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
   onSendMessage,
   latestTutorMessage,
   latestSpanishTranslation,
+  onRewardXp,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -241,13 +243,18 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
           {/* End Call Button */}
           <button
             onClick={() => {
-              soundFx.playPop();
+              if (callDuration >= 10) {
+                soundFx.playSuccess();
+                onRewardXp?.(25);
+              } else {
+                soundFx.playPop();
+              }
               onClose();
             }}
-            className="px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm border-2 border-b-4 border-rose-800 active:border-b-2 active:translate-y-0.5 shadow-lg flex items-center gap-2 transition"
+            className="px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm border-2 border-b-4 border-rose-800 active:border-b-2 active:translate-y-0.5 shadow-lg flex items-center gap-2 transition cursor-pointer"
           >
             <PhoneOff className="w-5 h-5" />
-            <span>Colgar</span>
+            <span>Colgar {callDuration >= 10 ? "(+25 XP)" : ""}</span>
           </button>
         </div>
       </div>

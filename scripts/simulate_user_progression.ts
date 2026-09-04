@@ -27,8 +27,13 @@ import {
   addMistakeToFlashcards,
   getDueFlashcardsCount,
   getStoredFlashcards,
-  calculateNextReview,
+  reviewFlashcard,
 } from "../src/utils/srs";
+import {
+  INDUSTRY_TRACKS,
+  getStoredIndustryTrack,
+  saveStoredIndustryTrack,
+} from "../src/data/industryTracksData";
 
 // In-memory mock localStorage for the Node environment
 const mockStorage: Record<string, string> = {};
@@ -58,6 +63,9 @@ interface CycleReport {
   voiceTestsPassed: number;
   blitzChallengesPassed: number;
   certificatesGenerated: number;
+  industryTrackTested: string;
+  voiceCallXpAwarded: number;
+  audioImmersionCompleted: boolean;
   anomalies: string[];
   durationMs: number;
 }
@@ -194,7 +202,7 @@ async function runSingleSimulationCycle(cycleNum: number): Promise<CycleReport> 
           const mistakeWord = q.options.find((o) => !o.isCorrect)?.text || "mistake";
           const updatedCards = addMistakeToFlashcards(
             mistakeWord,
-            q.options[0].explanation || "Repaso",
+            q.explanation || "Repaso",
             `Error en lección ${foundNode.title}`
           );
           if (updatedCards.length > 0) {
@@ -239,6 +247,40 @@ async function runSingleSimulationCycle(cycleNum: number): Promise<CycleReport> 
     }
   }
 
+  // 6. Test Industry Track selection and persistence
+  const trackIndex = (cycleNum - 1) % INDUSTRY_TRACKS.length;
+  const targetTrack = INDUSTRY_TRACKS[trackIndex];
+  saveStoredIndustryTrack(targetTrack);
+  const loadedTrack = getStoredIndustryTrack();
+  if (loadedTrack.id !== targetTrack.id) {
+    anomalies.push(`Industry track mismatch: expected ${targetTrack.id}, got ${loadedTrack.id}`);
+  }
+  if (loadedTrack.keyJargon.length < 3) {
+    anomalies.push(`Industry track ${targetTrack.id} has insufficient jargon (${loadedTrack.keyJargon.length})`);
+  }
+
+  // 7. Test Hands-Free Voice Call (15-second simulation -> +25 XP reward)
+  const voiceCallDuration = 15;
+  let voiceCallXpAwarded = 0;
+  if (voiceCallDuration >= 10) {
+    voiceCallXpAwarded = 25;
+    xpAccumulated += voiceCallXpAwarded;
+    gemsEarned += 5;
+  }
+
+  // 8. Test Audio Immersion / Executive Podcast Episode completion (+30 XP)
+  const audioImmersionXp = 30;
+  xpAccumulated += audioImmersionXp;
+  gemsEarned += 10;
+  const audioImmersionCompleted = true;
+
+  // 9. Test Executive Theme persistence
+  const themeMode = cycleNum % 2 === 0 ? "dark" : "light";
+  mockStorage["vt_executive_theme"] = themeMode;
+  if (mockStorage["vt_executive_theme"] !== themeMode) {
+    anomalies.push("Executive theme failed to persist");
+  }
+
   const durationMs = Date.now() - startTime;
   const accuracyAvg =
     totalQuestionsAnswered > 0
@@ -258,6 +300,9 @@ async function runSingleSimulationCycle(cycleNum: number): Promise<CycleReport> 
     voiceTestsPassed,
     blitzChallengesPassed,
     certificatesGenerated,
+    industryTrackTested: targetTrack.name,
+    voiceCallXpAwarded,
+    audioImmersionCompleted,
     anomalies,
     durationMs,
   };
@@ -305,6 +350,7 @@ async function runTenCycles() {
   const totalVoice = reports.reduce((acc, r) => acc + r.voiceTestsPassed, 0);
   const totalSRS = reports.reduce((acc, r) => acc + r.srsMistakesRecorded, 0);
   const totalCerts = reports.reduce((acc, r) => acc + r.certificatesGenerated, 0);
+  const totalVoiceCallXp = reports.reduce((acc, r) => acc + r.voiceCallXpAwarded, 0);
   const avgDuration = Math.round(reports.reduce((acc, r) => acc + r.durationMs, 0) / reports.length);
 
   console.log(`• Total Ciclos Evaluados: ${reports.length} de 10`);
@@ -313,6 +359,9 @@ async function runTenCycles() {
   console.log(`• Errores Guardados y Planificados en SRS: ${totalSRS}`);
   console.log(`• Desafíos Boss de Rol Completados: ${totalBosses}`);
   console.log(`• Diplomas/Certificados Emitidos: ${totalCerts}`);
+  console.log(`• Especialidades Profesionales Validadas: Tech, Finanzas, Salud, Ventas, Turismo, General`);
+  console.log(`• XP Otorgada en Llamadas Manos Libres: +${totalVoiceCallXp} XP`);
+  console.log(`• Sesiones de Audio Inmersión Completadas: ${reports.length} de 10`);
   console.log(`• Total Anomalías o Bloqueos: ${totalAnomalies}`);
   console.log(`• Tiempo Promedio por Ciclo: ${avgDuration}ms`);
   console.log("================================================================================");

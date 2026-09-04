@@ -512,6 +512,54 @@ export class VoiceRecognitionService {
     }
     this.isListening = false;
   }
+
+  public start(
+    onTranscript?: (text: string, isFinal: boolean) => void,
+    onError?: (error: string) => void
+  ): boolean {
+    if (onTranscript || onError) {
+      this.subscribe({
+        onTranscript: onTranscript || (() => {}),
+        onStart: () => {},
+        onEnd: () => {},
+        onError: onError || (() => {}),
+      });
+    }
+    return this.startListening();
+  }
+
+  public stop(): void {
+    this.stopListening();
+  }
 }
 
 export const voiceRecognizer = new VoiceRecognitionService();
+
+export function stopSpeech(): void {
+  stopSpeaking();
+}
+
+export function speakEnglish(
+  text: string,
+  options?: {
+    rate?: number;
+    onEnd?: () => void;
+    lang?: string;
+    gender?: "male" | "female";
+  }
+): void {
+  stopSpeaking();
+  const cleaned = cleanTextForSpeech(text);
+  if (!cleaned) {
+    options?.onEnd?.();
+    return;
+  }
+  hablarSegmentoNativo(
+    cleaned,
+    options?.gender ?? "female",
+    options?.lang ?? "en-US",
+    options?.rate ?? 1.0,
+    undefined,
+    options?.onEnd
+  );
+}

@@ -96,6 +96,13 @@ import { VoiceCallModal } from "./components/VoiceCallModal";
 import { CustomScenarioPromptModal } from "./components/CustomScenarioPromptModal";
 import { SpeedSpeakingChallengeModal } from "./components/SpeedSpeakingChallengeModal";
 import { SkillRadarModal } from "./components/SkillRadarModal";
+import { IndustrySelectorModal } from "./components/IndustrySelectorModal";
+import { AudioImmersionModal } from "./components/AudioImmersionModal";
+import { GlobalAccentsModal } from "./components/GlobalAccentsModal";
+import { StarInterviewModal } from "./components/StarInterviewModal";
+import { OfflineCommuteModal } from "./components/OfflineCommuteModal";
+import { isAirplaneModeActive as checkAirplaneModeActive } from "./utils/offlineCommuteManager";
+import { IndustryTrack, getStoredIndustryTrack } from "./data/industryTracksData";
 import { IdiomOfTheDayCard } from "./components/IdiomOfTheDayCard";
 import { useAppMode } from "./hooks/useAppMode";
 import { useOfflineStatus } from "./hooks/useOfflineStatus";
@@ -257,6 +264,10 @@ export default function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isProgressDashboardOpen, setIsProgressDashboardOpen] = useState(false);
   const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false);
+  const [isGlobalAccentsOpen, setIsGlobalAccentsOpen] = useState(false);
+  const [isStarInterviewOpen, setIsStarInterviewOpen] = useState(false);
+  const [isOfflineCommuteOpen, setIsOfflineCommuteOpen] = useState(false);
+  const [isAirplaneMode, setIsAirplaneMode] = useState<boolean>(() => checkAirplaneModeActive());
   const [isSeasonalThemeModalOpen, setIsSeasonalThemeModalOpen] = useState(false);
   const [activeCompanionPanel, setActiveCompanionPanel] = useState<"none" | "quests" | "scenario" | "idiom">("none");
   const [activeBossNodeId, setActiveBossNodeId] = useState<string | null>(null);
@@ -451,6 +462,26 @@ export default function App() {
   const [isCustomScenarioOpen, setIsCustomScenarioOpen] = useState(false);
   const [isSpeedChallengeOpen, setIsSpeedChallengeOpen] = useState(false);
   const [isSkillRadarOpen, setIsSkillRadarOpen] = useState(false);
+  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
+  const [isAudioImmersionOpen, setIsAudioImmersionOpen] = useState(false);
+  const [currentIndustry, setCurrentIndustry] = useState<IndustryTrack>(() => getStoredIndustryTrack());
+  const [isExecutiveDarkMode, setIsExecutiveDarkMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("vt_executive_theme") === "dark";
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleExecutiveDarkMode = () => {
+    setIsExecutiveDarkMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("vt_executive_theme", next ? "dark" : "light");
+      } catch {}
+      return next;
+    });
+  };
   const [idiomOfTheDay, setIdiomOfTheDay] = useState({
     phrase: "Piece of cake",
     meaningSpanish: "Algo muy fácil o sencillo de hacer (pan comido).",
@@ -1340,6 +1371,17 @@ export default function App() {
                 onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
                 onSwitchToKidsMode={handleSwitchToKidsMode}
                 onOpenDailyBlitz={() => setIsDailyBlitzOpen(true)}
+                onOpenVoiceCall={() => setIsVoiceCallOpen(true)}
+                onOpenIndustryModal={() => setIsIndustryModalOpen(true)}
+                onOpenSkillRadar={() => setIsSkillRadarOpen(true)}
+                onOpenAudioImmersion={() => setIsAudioImmersionOpen(true)}
+                onOpenGlobalAccents={() => setIsGlobalAccentsOpen(true)}
+                onOpenStarInterview={() => setIsStarInterviewOpen(true)}
+                onOpenOfflineCommute={() => setIsOfflineCommuteOpen(true)}
+                isAirplaneModeActive={isAirplaneMode}
+                isDarkMode={isExecutiveDarkMode}
+                onToggleDarkMode={handleToggleExecutiveDarkMode}
+                currentIndustry={currentIndustry}
                 onOpenCertificate={(cert) => {
                   setCertificateModalData({
                     studentName: avatarConfig.name === "Sarah" ? "Estudiante Pro" : "Usuario LinguaPro",
@@ -1398,6 +1440,9 @@ export default function App() {
                 onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
                 onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
                 onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+                onOpenGlobalAccents={() => setIsGlobalAccentsOpen(true)}
+                onOpenStarInterview={() => setIsStarInterviewOpen(true)}
+                onOpenOfflineCommute={() => setIsOfflineCommuteOpen(true)}
                 onSwitchToKidsMode={handleSwitchToKidsMode}
                 onStartDailyPractice={() => handleTabChange("chat")}
                 streakDays={gamification.streakDays}
@@ -2195,9 +2240,41 @@ export default function App() {
         onSendMessage={handleSendMessage}
         latestTutorMessage={latestTutorMessage?.text || ""}
         latestSpanishTranslation={latestTutorMessage?.spanishExplanation}
+        onRewardXp={(xp) => {
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + xp,
+            gems: gamification.gems + 5,
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+        }}
       />
 
-      {/* 2. Custom Roleplay Scenario Generator with AI */}
+      {/* 2. Industry Track Selector Modal */}
+      <IndustrySelectorModal
+        isOpen={isIndustryModalOpen}
+        onClose={() => setIsIndustryModalOpen(false)}
+        currentTrackId={currentIndustry.id}
+        onSelectTrack={(track) => setCurrentIndustry(track)}
+      />
+
+      {/* 3. Audio Immersion / Executive Podcast Player */}
+      <AudioImmersionModal
+        isOpen={isAudioImmersionOpen}
+        onClose={() => setIsAudioImmersionOpen(false)}
+        onRewardXp={(xp) => {
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + xp,
+            gems: gamification.gems + 10,
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+        }}
+      />
+
+      {/* 4. Custom Roleplay Scenario Generator with AI */}
       <CustomScenarioPromptModal
         isOpen={isCustomScenarioOpen}
         onClose={() => setIsCustomScenarioOpen(false)}
@@ -2268,6 +2345,44 @@ export default function App() {
       <TurpialRigCalibratorModal
         isOpen={isTurpialCalibratorOpen}
         onClose={() => setIsTurpialCalibratorOpen(false)}
+      />
+
+      {/* 9. Global Accents Trainer Modal */}
+      <GlobalAccentsModal
+        isOpen={isGlobalAccentsOpen}
+        onClose={() => setIsGlobalAccentsOpen(false)}
+        onScoreUpdate={(earnedXp) => {
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + earnedXp,
+            gems: gamification.gems + Math.max(1, Math.round(earnedXp / 10)),
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+        }}
+      />
+
+      {/* 10. STAR Method Job Interview Coach Modal */}
+      <StarInterviewModal
+        isOpen={isStarInterviewOpen}
+        onClose={() => setIsStarInterviewOpen(false)}
+        onScoreEarned={(score, earnedGems) => {
+          const earnedXp = Math.round(score);
+          const updatedGam = {
+            ...gamification,
+            xpPoints: gamification.xpPoints + earnedXp,
+            gems: gamification.gems + earnedGems,
+          };
+          setGamification(updatedGam);
+          saveStoredGamification(updatedGam);
+        }}
+      />
+
+      {/* 11. Offline Commute Packs Modal (Metro & Flight) */}
+      <OfflineCommuteModal
+        isOpen={isOfflineCommuteOpen}
+        onClose={() => setIsOfflineCommuteOpen(false)}
+        onAirplaneModeChange={(active) => setIsAirplaneMode(active)}
       />
     </div>
   );

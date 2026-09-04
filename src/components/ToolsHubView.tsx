@@ -16,6 +16,9 @@ import {
   BookMarked,
   History,
   ArrowRight,
+  Globe,
+  Plane,
+  Target,
 } from "lucide-react";
 
 export interface ToolsHubViewProps {
@@ -34,6 +37,9 @@ export interface ToolsHubViewProps {
   onOpenSeasonalTheme?: () => void;
   onOpenLeaderboard?: () => void;
   onStartDailyPractice?: () => void;
+  onOpenGlobalAccents?: () => void;
+  onOpenStarInterview?: () => void;
+  onOpenOfflineCommute?: () => void;
   streakDays: number;
   gemsCount: number;
 }
@@ -54,11 +60,38 @@ export function ToolsHubView({
   onOpenSeasonalTheme,
   onOpenLeaderboard,
   onStartDailyPractice,
+  onOpenGlobalAccents,
+  onOpenStarInterview,
+  onOpenOfflineCommute,
   streakDays,
   gemsCount,
 }: ToolsHubViewProps) {
   // Lista de herramientas ultra-minimalistas sin párrafos de texto (Zero-Text Rule)
   const toolItems = [
+    {
+      id: "accents",
+      title: "Acentos Globales 🌐",
+      icon: Globe,
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+      action: onOpenGlobalAccents,
+    },
+    {
+      id: "star_interview",
+      title: "Entrevistas STAR 🎯",
+      icon: Target,
+      iconColor: "text-teal-600",
+      bgColor: "bg-teal-50",
+      action: onOpenStarInterview,
+    },
+    {
+      id: "offline_commute",
+      title: "Pack Metro / Avión 🚇",
+      icon: Plane,
+      iconColor: "text-purple-600",
+      bgColor: "bg-purple-50",
+      action: onOpenOfflineCommute,
+    },
     {
       id: "leaderboard",
       title: "Liga Semanal 🏆",
