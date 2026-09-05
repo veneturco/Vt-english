@@ -328,6 +328,7 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-950/80 border border-amber-500/30 overflow-hidden flex items-center justify-center relative shrink-0 shadow-lg">
                 <Avatar2DCanvas
+                  className="w-full h-full min-h-0 scale-[0.42] sm:scale-[0.5] origin-center"
                   config={tempConfig}
                   animationState="idle"
                   mouthIntensity={0}
@@ -644,7 +645,7 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                       </label>
                       <button
                         type="button"
-                        onClick={handleTestAudio}
+                        onClick={() => handleTestAudio()}
                         className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5 active:scale-95 shrink-0"
                       >
                         <span>🎙️</span>
@@ -954,7 +955,7 @@ export const AvatarCustomizerModal: React.FC<AvatarCustomizerModalProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={handleTestAudio}
+                          onClick={() => handleTestAudio()}
                           className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5"
                         >
                           <span>🎙️</span>

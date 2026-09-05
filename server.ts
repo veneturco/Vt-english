@@ -32,7 +32,7 @@ function getGeminiClient(): GoogleGenAI {
 
 // Prioritized Gemini models pool: Uses official supported models
 const MODELS_TO_TRY = [
-  "gemini-3.7-flash",
+  "gemini-3.8-flash",
   "gemini-3.1-flash-lite",
   "gemini-flash-latest",
 ];
@@ -77,7 +77,7 @@ async function generateWithRetryAndFallback(
   }
 
   // Fallback with relaxed JSON generation on flash lite
-  for (const fallbackModel of ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.7-flash"]) {
+  for (const fallbackModel of ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.8-flash"]) {
     try {
       const simplifiedResponse = await ai.models.generateContent({
         model: fallbackModel,

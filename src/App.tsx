@@ -110,11 +110,9 @@ import { OfflineStatusIndicator } from "./components/OfflineStatusIndicator";
 import { generateOfflineTutorTurn } from "./utils/offlineSessionManager";
 
 export default function App() {
-  // State Initialization - Turpial BET as default active avatar
+  // State Initialization - Turpial BET as default, preserving stored avatar choices
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => {
-    const defaultTurpial = AVATAR_PRESETS.bet_turpial || getStoredAvatarConfig();
-    saveAvatarConfig(defaultTurpial);
-    return defaultTurpial;
+    return getStoredAvatarConfig();
   });
   const [cefrLevel, setCefrLevel] = useState<CEFRLevel>(getStoredLevel);
   const [teachingMode, setTeachingMode] = useState<TeachingMode>("bilingual_coach");
@@ -296,7 +294,7 @@ export default function App() {
     });
 
     setActiveBossNodeId(null);
-    handleTabChange("roadmap");
+    handleTabChange("path");
   };
 
   // Seasonal & Holiday Theme Engine (Automatic Calendar Detection + Live CSS sync)
@@ -1378,6 +1376,7 @@ export default function App() {
                 onOpenGlobalAccents={() => setIsGlobalAccentsOpen(true)}
                 onOpenStarInterview={() => setIsStarInterviewOpen(true)}
                 onOpenOfflineCommute={() => setIsOfflineCommuteOpen(true)}
+                onSwitchToChat={() => handleTabChange("chat")}
                 isAirplaneModeActive={isAirplaneMode}
                 isDarkMode={isExecutiveDarkMode}
                 onToggleDarkMode={handleToggleExecutiveDarkMode}
@@ -2239,7 +2238,7 @@ export default function App() {
         isTutorSpeaking={isPlayingAudio}
         onSendMessage={handleSendMessage}
         latestTutorMessage={latestTutorMessage?.text || ""}
-        latestSpanishTranslation={latestTutorMessage?.spanishExplanation}
+        latestSpanishTranslation={latestTutorMessage?.spanishTranslation || latestTutorMessage?.teacherCommentary}
         onRewardXp={(xp) => {
           const updatedGam = {
             ...gamification,
@@ -2327,6 +2326,7 @@ export default function App() {
         wordsLearnedCount={userStats.wordsLearned || vocabulary.length}
         totalSpeakingMinutes={userStats.minutesPracticed || 18}
         cefrLevel={cefrLevel}
+        overallPronunciationScore={overallPronunciationScore > 0 ? overallPronunciationScore : 92}
       />
 
       {/* 7. Seasonal Theme Engine & Particle Effects Modal */}
@@ -2351,7 +2351,7 @@ export default function App() {
       <GlobalAccentsModal
         isOpen={isGlobalAccentsOpen}
         onClose={() => setIsGlobalAccentsOpen(false)}
-        onScoreUpdate={(earnedXp) => {
+        onRewardXp={(earnedXp) => {
           const updatedGam = {
             ...gamification,
             xpPoints: gamification.xpPoints + earnedXp,

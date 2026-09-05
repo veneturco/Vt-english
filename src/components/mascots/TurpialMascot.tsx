@@ -26,13 +26,13 @@ export const TurpialMasterMascot: React.FC<MascotRenderProps> = ({
   return (
     <div
       className={`relative flex items-center justify-center filter drop-shadow-[-4px_-4px_18px_rgba(245,158,11,0.55)] drop-shadow-[4px_4px_22px_rgba(56,189,248,0.55)] drop-shadow-[0_26px_40px_rgba(0,0,0,0.9)] cursor-pointer select-none ${className}`}
-      onClick={onClick}
+      onClick={(e) => onClick?.(e)}
     >
       <TurpialSpriteRig25D
         emotion={emotion}
         isSpeaking={isSpeaking}
         mouthIntensity={mouthOpenAmount}
-        onTap={onClick}
+        onTap={() => onClick?.({} as any)}
       />
       {/* Optional Accessory Overlay if provided */}
       {accessory && renderAccessoryOverlay && (

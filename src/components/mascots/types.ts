@@ -16,5 +16,5 @@ export interface MascotRenderProps {
   accessory?: AvatarAccessory;
   renderAccessoryOverlay: (acc?: AvatarAccessory) => React.ReactNode;
   className?: string;
-  onClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
+  onClick?: (e: React.MouseEvent<any>) => void;
 }

@@ -22,6 +22,7 @@ import {
   Globe,
   Plane,
   Target,
+  MessageSquare,
 } from "lucide-react";
 import { CEFRLevel, RoleplayScenarioItem } from "../types";
 import { playPopSound, playCoinSound } from "../utils/audioSynth";
@@ -32,6 +33,7 @@ import {
 } from "../utils/learningPathStorage";
 import { getDueFlashcardsCount } from "../utils/srs";
 import { IndustryTrack, DEFAULT_INDUSTRY_TRACK } from "../data/industryTracksData";
+import { TurpialSpriteRig25D } from "./mascots/TurpialSpriteRig25D";
 
 export interface LessonNode {
   id: string;
@@ -261,6 +263,7 @@ export interface AdultLearningPathProps {
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   currentIndustry?: IndustryTrack;
+  onSwitchToChat?: () => void;
 }
 
 export function AdultLearningPath({
@@ -298,6 +301,7 @@ export function AdultLearningPath({
   isDarkMode = false,
   onToggleDarkMode,
   currentIndustry = DEFAULT_INDUSTRY_TRACK,
+  onSwitchToChat,
 }: AdultLearningPathProps) {
   const [selectedNodeModal, setSelectedNodeModal] = useState<LessonNode | null>(null);
 
@@ -604,6 +608,81 @@ export function AdultLearningPath({
 
       {/* 2. FEED VERTICAL DE APRENDIZAJE: PRIORIZANDO LA RUTA DEL DÍA */}
       <main className="w-full max-w-xl mx-auto px-4 pt-4 sm:pt-6 flex flex-col gap-6">
+        {/* COMPONENTE MENTOR BET EL TURPIAL: AVATAR INTERACTIVO EN LA RUTA */}
+        <div
+          className={`p-4 sm:p-5 rounded-3xl border-2 ${
+            isDarkMode
+              ? "bg-slate-900/90 border-amber-500/30 shadow-lg shadow-amber-500/5"
+              : "bg-linear-to-r from-amber-50 via-orange-50/70 to-amber-100/60 border-amber-300/80 shadow-md shadow-amber-500/10"
+          } flex flex-col sm:flex-row items-center gap-4 relative overflow-hidden`}
+        >
+          {/* Avatar 2.5D Sprite Rig Mini-Stage */}
+          <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 relative flex items-center justify-center">
+            <div className="w-24 h-24 rounded-2xl bg-amber-400/20 absolute inset-2 blur-lg pointer-events-none" />
+            <div className="w-full h-full scale-[0.45] sm:scale-[0.5] origin-center flex items-center justify-center">
+              <TurpialSpriteRig25D
+                emotion="idle"
+                isSpeaking={false}
+                mouthIntensity={0}
+                isListening={false}
+                onTap={() => {
+                  playPopSound();
+                  haptics.light();
+                  onSwitchToChat?.();
+                }}
+              />
+            </div>
+            <span className="absolute -bottom-1 right-2 px-1.5 py-0.5 rounded-md bg-amber-500 text-slate-950 font-black text-[9px] shadow-xs">
+              Tutor BET
+            </span>
+          </div>
+
+          {/* Dialogue / Encouragement Bubble */}
+          <div className="flex-1 text-center sm:text-left space-y-1.5">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> Mentor de Inglés IA
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
+                En vivo
+              </span>
+            </div>
+            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+              ¡Hola {userName}! Hoy tenemos lecciones clave de nivel {currentLevel} preparadas.
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Practica tu pronunciación en tiempo real o habla libremente conmigo en cualquier momento.
+            </p>
+
+            <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
+              {onSwitchToChat && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playPopSound();
+                    haptics.medium();
+                    onSwitchToChat();
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Conversar con mi Avatar</span>
+                </button>
+              )}
+              {onOpenVoiceCall && (
+                <button
+                  type="button"
+                  onClick={onOpenVoiceCall}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Llamada Rápida</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* COMPONENTE META DIARIA DE APRENDIZAJE (PROGRESS RING UI) */}
         <DailyGoalProgressRing
           currentXp={35}

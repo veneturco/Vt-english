@@ -285,7 +285,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
   const [voiceJumpTranscript, setVoiceJumpTranscript] = useState<string>("");
 
   const [mascotMood, setMascotMood] = useState<
-    "happy" | "speaking" | "celebrating" | "encouraging" | "eating"
+    "happy" | "speaking" | "celebrating" | "encouraging" | "eating" | "listening"
   >("happy");
   const [blockHitEffect, setBlockHitEffect] = useState<number | null>(null);
   const [comboCount, setComboCount] = useState<number>(0);
@@ -1379,8 +1379,9 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
                     </div>
                   )}
 
-                  <div className="w-full h-full bg-slate-950/90 rounded-[22px] overflow-hidden relative flex flex-col items-center justify-center p-2">
+                  <div className="w-full h-full bg-slate-950/90 rounded-[22px] overflow-hidden relative flex flex-col items-center justify-center p-1">
                     <Avatar2DCanvas
+                      className="w-full h-full min-h-0 scale-90 sm:scale-95"
                       config={currentCompanion.avatarConfig}
                       isListening={isListening}
                       animationState={

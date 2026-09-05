@@ -45,7 +45,7 @@ export const RexyMascot: React.FC<MascotRenderProps> = ({
       ref={svgRef}
       onClick={handleClick}
       viewBox="0 0 340 380"
-      className={`w-68 h-80 sm:w-76 sm:h-88 will-change-transform origin-bottom cursor-pointer drop-shadow-2xl filter drop-shadow-[-2px_-2px_14px_rgba(34,197,94,0.25)] drop-shadow-[2px_2px_16px_rgba(234,179,8,0.25)] ${className}`}
+      className={`w-56 h-64 sm:w-64 sm:h-72 max-w-full max-h-full will-change-transform origin-bottom cursor-pointer drop-shadow-2xl filter drop-shadow-[-2px_-2px_14px_rgba(34,197,94,0.25)] drop-shadow-[2px_2px_16px_rgba(234,179,8,0.25)] ${className}`}
     >
       {/* 1. Luminous Base Pedestal Ring & Contact Shadow */}
       <g id="rexyBaseShadow">

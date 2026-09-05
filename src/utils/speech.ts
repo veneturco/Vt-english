@@ -534,12 +534,18 @@ export class VoiceRecognitionService {
     this.isListening = false;
   }
 
+  private adHocUnsubscribe: (() => void) | null = null;
+
   public start(
     onTranscript?: (text: string, isFinal: boolean) => void,
     onError?: (error: string) => void
   ): boolean {
+    if (this.adHocUnsubscribe) {
+      this.adHocUnsubscribe();
+      this.adHocUnsubscribe = null;
+    }
     if (onTranscript || onError) {
-      this.subscribe({
+      this.adHocUnsubscribe = this.subscribe({
         onTranscript: onTranscript || (() => {}),
         onStart: () => {},
         onEnd: () => {},
@@ -550,6 +556,10 @@ export class VoiceRecognitionService {
   }
 
   public stop(): void {
+    if (this.adHocUnsubscribe) {
+      this.adHocUnsubscribe();
+      this.adHocUnsubscribe = null;
+    }
     this.stopListening();
   }
 }

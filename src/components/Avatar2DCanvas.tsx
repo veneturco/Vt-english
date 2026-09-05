@@ -49,6 +49,7 @@ interface Avatar2DCanvasProps {
   isDailyGoalCelebration?: boolean;
   dailyGoalAchievedTrigger?: number;
   stageMousePos?: { x: number; y: number };
+  className?: string;
 }
 
 export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
@@ -63,6 +64,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   isDailyGoalCelebration = false,
   dailyGoalAchievedTrigger = 0,
   stageMousePos,
+  className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -374,10 +376,8 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={recordUserActivity}
-      className={`relative w-full h-full min-h-[380px] sm:min-h-[440px] flex items-center justify-center select-none overflow-hidden ${
-        !isSpeaking && !isListening && effectiveEmotion === "idle"
-          ? "animate-bobbing"
-          : ""
+      className={`relative w-full h-full flex items-center justify-center select-none ${
+        className || "min-h-[260px] sm:min-h-[300px]"
       }`}
       style={{ perspective: "1100px" }}
     >
@@ -472,12 +472,10 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
         onClick={handleMascotTap}
         className={`relative z-10 flex flex-col items-center justify-center origin-bottom cursor-pointer group transform-gpu ${
           isPoked ? "animate-spring-poke" : ""
-        } ${
-          !isSpeaking && !isListening && effectiveEmotion === "idle"
-            ? "animate-turpial-breathing"
-            : ""
         }`}
         animate={{
+          rotateX: tiltX,
+          rotateY: tiltY,
           y: isSurprised
             ? [-16, -14]
             : isHappy
@@ -534,10 +532,11 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
             repeat: isHappy ? Infinity : 0,
             ease: "easeInOut",
           },
+          rotateX: { duration: 0.2, ease: "easeOut" },
+          rotateY: { duration: 0.2, ease: "easeOut" },
         }}
         style={{
           transformStyle: "preserve-3d",
-          transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
         }}
       >
         {/* Render Vector Character based on preset and rich emotion states */}
@@ -2431,7 +2430,21 @@ function renderCharacterSVG({
           renderAccessoryOverlay={renderAccessoryOverlay}
         />
       );
+    case "shiba_inu":
     default:
-      return null;
+      // Fallback robusto al Turpial oficial para asegurar que el avatar SIEMPRE sea visible
+      return (
+        <TurpialSpriteRig25D
+          emotion={emotion}
+          isSpeaking={isSpeaking}
+          mouthIntensity={mouthOpenAmount}
+          isListening={isListening}
+          headTilt={idleHeadAngle}
+          onTap={onMascotClick}
+          accessory={config.accessory}
+          renderAccessoryOverlay={renderAccessoryOverlay}
+          mouseOffset={mouseOffset}
+        />
+      );
   }
 };

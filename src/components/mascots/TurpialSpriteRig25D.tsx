@@ -123,7 +123,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
   const isThinking = activeState === 'pensativo' || activeState === 'thinking';
   const isSurprised = activeState === 'sorpresa' || activeState === 'surprised';
 
-  const springTransition = { type: 'spring', stiffness: 280, damping: 18, mass: 0.75 };
+  const springTransition = { type: 'spring' as const, stiffness: 280, damping: 18, mass: 0.75 };
 
   const handleMascotTap = () => {
     setIsTapJumping(true);
@@ -136,14 +136,14 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
       return {
         y: [0, -18, 0],
         scale: [1, 1.05, 0.98, 1],
-        transition: { duration: 0.42, ease: 'easeOut' },
+        transition: { duration: 0.42, ease: 'easeOut' as const },
       };
     }
     if (isCelebrating) {
       return {
         y: [0, -14, 0],
         scale: [1, 1.03, 1],
-        transition: { repeat: Infinity, duration: 0.5, ease: 'easeInOut' },
+        transition: { repeat: Infinity, duration: 0.5, ease: 'easeInOut' as const },
       };
     }
     if (isListeningEffective) {
@@ -155,7 +155,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
     // Idle orgánico respirando
     return {
       y: [0, -4, 0],
-      transition: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' },
+      transition: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' as const },
     };
   };
 
@@ -165,13 +165,13 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
     if (isTapJumping) {
       return {
         rotate: side === 'left' ? [baseRot, baseRot - 22, baseRot] : [baseRot, baseRot + 22, baseRot],
-        transition: { duration: 0.42, ease: 'easeOut' },
+        transition: { duration: 0.42, ease: 'easeOut' as const },
       };
     }
     if (isCelebrating) {
       return {
         rotate: side === 'left' ? [baseRot, baseRot - 32, baseRot + 4, baseRot] : [baseRot, baseRot + 32, baseRot - 4, baseRot],
-        transition: { repeat: Infinity, duration: 0.35, ease: 'easeInOut' },
+        transition: { repeat: Infinity, duration: 0.35, ease: 'easeInOut' as const },
       };
     }
     if (isListeningEffective) {
@@ -188,7 +188,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
         rotate: side === 'left'
           ? [baseRot, baseRot - 7, baseRot - 2, baseRot - 8, baseRot]
           : [baseRot, baseRot + 7, baseRot + 2, baseRot + 8, baseRot],
-        transition: { repeat: Infinity, duration: 1.1, ease: 'easeInOut' },
+        transition: { repeat: Infinity, duration: 1.1, ease: 'easeInOut' as const },
       };
     }
     return { rotate: baseRot, scale: 1, transition: springTransition };
@@ -205,7 +205,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
     return base + headTilt + cursorTilt;
   };
 
-  const gpuLayer = { willChange: 'transform', transform: 'translateZ(0)' };
+  const gpuLayer = { willChange: 'transform' } as const;
 
   // Manejador seguro de error que pasa de PNG a SVG si el PNG falla
   const handleImageError = (
@@ -237,7 +237,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
           style={{
             bottom: currentOffsets.bodyBottom - 8,
             left: '50%',
-            transform: 'translateX(-50%)',
+            x: '-50%',
             width: currentOffsets.bodyWidth * 0.88,
             height: 22,
             background:
@@ -578,7 +578,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
                   transition: isPreviewMouthActive
                     ? { duration: 0.06 }
                     : isSpeakingEffective
-                    ? { repeat: Infinity, duration: 0.24, ease: 'easeInOut' }
+                    ? { repeat: Infinity, duration: 0.24, ease: 'easeInOut' as const }
                     : springTransition,
                 }}
               />
@@ -612,7 +612,7 @@ export const TurpialSpriteRig25D: React.FC<TurpialSpriteRig25DProps> = ({
                 transition: isPreviewMouthActive
                   ? { duration: 0.06 }
                   : isSpeakingEffective
-                  ? { repeat: Infinity, duration: 0.24, ease: 'easeInOut' }
+                  ? { repeat: Infinity, duration: 0.24, ease: 'easeInOut' as const }
                   : springTransition,
               }}
             />
