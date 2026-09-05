@@ -42,7 +42,6 @@ export function useOfflineStatus() {
 
   const saveSession = useCallback((snapshot: Partial<ActiveLearningSessionSnapshot>) => {
     saveActiveLearningSessionSnapshot(snapshot);
-    setLastSession(getLastActiveLearningSessionSnapshot());
   }, []);
 
   return {

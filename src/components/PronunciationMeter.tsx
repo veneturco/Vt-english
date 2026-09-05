@@ -30,15 +30,19 @@ export const PronunciationMeter: React.FC<PronunciationMeterProps> = ({
 
   if (!userTranscript && wordAccuracies.length === 0) return null;
 
+  const clampedOverall = Math.max(0, Math.min(100, Math.round(overallScore)));
+
   const getScoreColor = (score: number) => {
-    if (score >= 85) return "text-emerald-400 border-emerald-500/50 bg-emerald-500/10";
-    if (score >= 60) return "text-amber-400 border-amber-500/50 bg-amber-500/10";
+    const s = Math.max(0, Math.min(100, Math.round(score)));
+    if (s >= 85) return "text-emerald-400 border-emerald-500/50 bg-emerald-500/10";
+    if (s >= 60) return "text-amber-400 border-amber-500/50 bg-amber-500/10";
     return "text-rose-400 border-rose-500/50 bg-rose-500/10";
   };
 
   const getBadgeColor = (score: number) => {
-    if (score >= 85) return "from-emerald-500 to-teal-600 text-white";
-    if (score >= 60) return "from-amber-500 to-orange-600 text-white";
+    const s = Math.max(0, Math.min(100, Math.round(score)));
+    if (s >= 85) return "from-emerald-500 to-teal-600 text-white";
+    if (s >= 60) return "from-amber-500 to-orange-600 text-white";
     return "from-rose-500 to-red-600 text-white";
   };
 
@@ -85,15 +89,15 @@ export const PronunciationMeter: React.FC<PronunciationMeterProps> = ({
         <div className="flex items-center gap-2">
           <div
             className={`px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r ${getBadgeColor(
-              overallScore
+              clampedOverall
             )} shadow-md flex items-center gap-1`}
           >
-            {overallScore >= 85 ? (
+            {clampedOverall >= 85 ? (
               <CheckCircle className="w-3 h-3 text-white" />
             ) : (
               <AlertCircle className="w-3 h-3 text-white" />
             )}
-            <span>{overallScore}% Match</span>
+            <span>{clampedOverall}% Match</span>
           </div>
 
           {onDismiss && (
@@ -111,7 +115,8 @@ export const PronunciationMeter: React.FC<PronunciationMeterProps> = ({
       {/* Interactive Word Chips Breakdown */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
         {wordAccuracies.map((item, idx) => {
-          const colorClass = getScoreColor(item.score);
+          const clampedScore = Math.max(0, Math.min(100, Math.round(item.score)));
+          const colorClass = getScoreColor(clampedScore);
           return (
             <button
               key={idx}
@@ -125,7 +130,7 @@ export const PronunciationMeter: React.FC<PronunciationMeterProps> = ({
             >
               <span>{item.word}</span>
               <span className="text-[10px] font-mono opacity-80">
-                {item.score}%
+                {clampedScore}%
               </span>
               <Volume2 className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
             </button>

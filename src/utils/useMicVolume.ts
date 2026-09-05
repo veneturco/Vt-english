@@ -24,6 +24,7 @@ export function useMicVolume(
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const smoothedVolumeRef = useRef<number>(0);
+  const lastDispatchedVolumeRef = useRef<number>(0);
 
   const sensitivity = options?.sensitivity ?? 1.2;
   const smoothing = options?.smoothing ?? 0.65;
@@ -47,6 +48,7 @@ export function useMicVolume(
         audioCtxRef.current = null;
       }
       setVolume(0);
+      lastDispatchedVolumeRef.current = 0;
       setIsMicActive(false);
       smoothedVolumeRef.current = 0;
       return;
@@ -114,8 +116,14 @@ export function useMicVolume(
           smoothedVolumeRef.current =
             smoothedVolumeRef.current * smoothing + clamped * (1 - smoothing);
 
-          const rounded = Math.round(smoothedVolumeRef.current * 1000) / 1000;
-          setVolume(rounded);
+          const rounded = Math.round(smoothedVolumeRef.current * 100) / 100;
+          if (
+            Math.abs(rounded - lastDispatchedVolumeRef.current) >= 0.03 ||
+            (rounded === 0 && lastDispatchedVolumeRef.current !== 0)
+          ) {
+            lastDispatchedVolumeRef.current = rounded;
+            setVolume(rounded);
+          }
 
           animFrameRef.current = requestAnimationFrame(updateVolume);
         };

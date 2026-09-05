@@ -14,6 +14,13 @@ interface AvatarCanvasProps {
   isListening?: boolean;
   onMascotClick?: () => void;
   stageMousePos?: { x: number; y: number };
+  speechBubble?: {
+    text: string;
+    mood?: "praising" | "thinking" | "support" | "cheer" | "dancing" | "idle";
+    icon?: string;
+  } | null;
+  className?: string;
+  isCompact?: boolean;
 }
 
 export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
@@ -23,6 +30,9 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
   isListening = false,
   onMascotClick,
   stageMousePos,
+  speechBubble,
+  className = "",
+  isCompact = false,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [glbReport, setGlbReport] = useState<GlbDiagnosticReport | null>(null);
@@ -1363,14 +1373,69 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
         customGlbMixer.update(delta);
       }
 
-      // Respiración de escenario y rotación interactiva 360°
-      characterGroup.position.y = Math.sin(elapsed * 2.0) * 0.012;
-      characterGroup.rotation.y = userRotY;
+      // 6.1 Cinemática del Grupo de Personaje según Estado de Ánimo
+      const isCelebrating = animState === "celebrating";
+      const isPensativo = animState === "pensativo";
+      const isEncouraging = animState === "encouraging";
+      const isAlegre = animState === "alegre";
 
-      // Movimiento suave de la cabeza hacia el puntero
+      if (isCelebrating) {
+        // DANZA DE CELEBRACIÓN 3D: Saltos rítmicos, swing lateral y rotación alegre
+        const danceJump = Math.abs(Math.sin(elapsed * 7.0)) * 0.07;
+        const danceSway = Math.sin(elapsed * 3.5) * 0.08;
+        const danceTilt = Math.cos(elapsed * 3.5) * 0.12;
+        characterGroup.position.y = 0.02 + danceJump;
+        characterGroup.position.x = danceSway;
+        characterGroup.rotation.z = danceTilt;
+        characterGroup.rotation.y = userRotY + Math.sin(elapsed * 2.0) * 0.25;
+      } else if (isAlegre) {
+        // ALEGRE: Pequeño salto feliz continuo y balanceo simpático
+        characterGroup.position.y = Math.abs(Math.sin(elapsed * 5.0)) * 0.035;
+        characterGroup.position.x = 0;
+        characterGroup.rotation.z = Math.sin(elapsed * 2.5) * 0.04;
+        characterGroup.rotation.y = userRotY;
+      } else if (isPensativo) {
+        // PENSATIVO / APOYO VISUAL: Inclinación curiosa y respiración atenta
+        characterGroup.position.y = Math.sin(elapsed * 1.5) * 0.008;
+        characterGroup.position.x = 0;
+        characterGroup.rotation.z = -0.06;
+        characterGroup.rotation.y = userRotY;
+      } else if (isEncouraging) {
+        // ENCOURAGING: Inclinación suave hacia adelante de apoyo
+        characterGroup.position.y = Math.sin(elapsed * 3.5) * 0.015;
+        characterGroup.position.x = 0;
+        characterGroup.rotation.z = 0;
+        characterGroup.rotation.y = userRotY;
+      } else {
+        // Respiración de escenario y rotación interactiva 360° normal
+        characterGroup.position.y = Math.sin(elapsed * 2.0) * 0.012;
+        characterGroup.position.x = 0;
+        characterGroup.rotation.z = 0;
+        characterGroup.rotation.y = userRotY;
+      }
+
+      // Movimiento suave de la cabeza hacia el puntero + adición de gestos
       if (headGroup) {
-        headGroup.rotation.y += (mouseTarget.x * 0.22 - headGroup.rotation.y) * 0.08;
-        headGroup.rotation.x += (-mouseTarget.y * 0.15 - headGroup.rotation.x) * 0.08;
+        let targetRotY = mouseTarget.x * 0.22;
+        let targetRotX = -mouseTarget.y * 0.15;
+        let targetRotZ = 0;
+
+        if (isCelebrating) {
+          targetRotZ = -Math.sin(elapsed * 3.5) * 0.18;
+          targetRotX += Math.sin(elapsed * 7.0) * 0.12;
+        } else if (isPensativo) {
+          // Inclinación curiosa de cabeza hacia un lado (escuchando / pensando)
+          targetRotZ = -0.16 + Math.sin(elapsed * 1.2) * 0.04;
+          targetRotX = 0.08 + Math.cos(elapsed * 1.5) * 0.03;
+          targetRotY += 0.12;
+        } else if (isEncouraging) {
+          // Asentimiento afirmativo continuo ("¡Tú puedes!")
+          targetRotX += 0.12 + Math.sin(elapsed * 5.0) * 0.08;
+        }
+
+        headGroup.rotation.y += (targetRotY - headGroup.rotation.y) * 0.08;
+        headGroup.rotation.x += (targetRotX - headGroup.rotation.x) * 0.08;
+        headGroup.rotation.z += (targetRotZ - headGroup.rotation.z) * 0.08;
       }
 
       // ==========================================================
@@ -1466,7 +1531,15 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
       // Color dinámico del Anillo Holográfico
       if (ring) {
         const mat = ring.material as THREE.MeshBasicMaterial;
-        if (listening) {
+        if (isCelebrating) {
+          // Destellos festivos dorados/esmeralda giratorios
+          const hue = (elapsed * 0.4) % 1;
+          mat.color.setHSL(hue, 0.9, 0.55);
+        } else if (isPensativo) {
+          mat.color.setHex(0xf59e0b); // Warm Amber thinking
+        } else if (isEncouraging) {
+          mat.color.setHex(0x10b981); // Emerald Green encouragement
+        } else if (listening) {
           mat.color.setHex(0x38bdf8); // Sky blue
         } else if (animState === "speaking") {
           mat.color.setHex(0xa855f7); // Purple
@@ -1526,12 +1599,34 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
   const emoji = config.characterEmoji || "✨";
 
   return (
-    <div className="relative w-full h-full min-h-[340px] flex items-center justify-center overflow-hidden select-none group">
-      {/* Subtle, Organic Framer Motion Idle & Ambient Stage Animation */}
+    <div
+      className={`relative w-full h-full ${
+        isCompact ? "min-h-[180px]" : "min-h-[340px]"
+      } flex items-center justify-center overflow-hidden select-none group ${className}`}
+    >
+      {/* Dynamic Organic Framer Motion Idle, Speaking, Thinking & Dance Celebration Stage Animation */}
       <motion.div
         className="w-full h-full absolute inset-0"
         animate={
-          animationState === "speaking"
+          animationState === "celebrating"
+            ? {
+                y: [0, -14, 2, -10, 0],
+                rotate: [0, 2.5, -2.5, 1.8, 0],
+                scale: [1, 1.05, 0.98, 1.03, 1],
+              }
+            : animationState === "pensativo"
+            ? {
+                y: [0, -2.5, 0, -1.5, 0],
+                rotate: [0, -1.8, 0.5, -1.2, 0],
+                scale: [1, 1.005, 0.998, 1],
+              }
+            : animationState === "encouraging"
+            ? {
+                y: [0, -6, 0, -4, 0],
+                rotate: [0, 1.0, -1.0, 0],
+                scale: [1, 1.02, 0.995, 1],
+              }
+            : animationState === "speaking"
             ? {
                 y: [0, -3.5, 0, -2, 0],
                 rotate: [0, 0.5, -0.4, 0.2, 0],
@@ -1551,7 +1646,18 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
               }
         }
         transition={{
-          duration: animationState === "speaking" ? 2.4 : isListening ? 3.2 : 5.6,
+          duration:
+            animationState === "celebrating"
+              ? 0.95
+              : animationState === "encouraging"
+              ? 1.4
+              : animationState === "pensativo"
+              ? 3.6
+              : animationState === "speaking"
+              ? 2.4
+              : isListening
+              ? 3.2
+              : 5.6,
           repeat: Infinity,
           ease: "easeInOut",
         }}
@@ -1562,29 +1668,69 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
           title="Arrastra con el dedo o mouse para girar el personaje en 360°"
         />
       </motion.div>
+
+      {/* Floating Dynamic Support / Praise Speech Bubble */}
+      {speechBubble && speechBubble.text && (
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.9 }}
+          className={`absolute ${
+            isCompact ? "top-2 left-2 right-2" : "top-14 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-xs"
+          } z-30 pointer-events-auto shadow-2xl rounded-2xl p-3 border text-xs leading-relaxed backdrop-blur-md ${
+            speechBubble.mood === "praising" || speechBubble.mood === "cheer" || speechBubble.mood === "dancing"
+              ? "bg-emerald-950/90 border-emerald-500/50 text-emerald-100 shadow-emerald-900/30"
+              : speechBubble.mood === "thinking" || speechBubble.mood === "support"
+              ? "bg-amber-950/90 border-amber-500/50 text-amber-100 shadow-amber-900/30"
+              : "bg-slate-900/90 border-slate-700 text-slate-100 shadow-slate-950/50"
+          }`}
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-base shrink-0">
+              {speechBubble.icon ||
+                (speechBubble.mood === "thinking" || speechBubble.mood === "support"
+                  ? "💡"
+                  : speechBubble.mood === "dancing" || speechBubble.mood === "cheer"
+                  ? "🎉"
+                  : "✨")}
+            </span>
+            <div className="flex-1 font-medium">{speechBubble.text}</div>
+          </div>
+        </motion.div>
+      )}
       
       {/* Badge de Estado del Tutor */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs text-slate-300 pointer-events-none shadow-sm">
-        <span
-          className={`w-2.5 h-2.5 rounded-full ${
-            animationState === "speaking"
-              ? "bg-purple-400 animate-pulse"
+      {!isCompact && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs text-slate-300 pointer-events-none shadow-sm">
+          <span
+            className={`w-2.5 h-2.5 rounded-full ${
+              animationState === "celebrating"
+                ? "bg-amber-400 animate-bounce"
+                : animationState === "pensativo"
+                ? "bg-amber-400 animate-pulse"
+                : animationState === "speaking"
+                ? "bg-purple-400 animate-pulse"
+                : isListening
+                ? "bg-sky-400 animate-pulse"
+                : "bg-emerald-400"
+            }`}
+          />
+          <span className="font-bold text-slate-200">
+            {animationState === "celebrating"
+              ? "¡Celebrando con baile! 🕺"
+              : animationState === "pensativo"
+              ? "Pensando contigo... 💡"
+              : animationState === "speaking"
+              ? `${config.name} hablando...`
               : isListening
-              ? "bg-sky-400 animate-pulse"
-              : "bg-emerald-400"
-          }`}
-        />
-        <span className="font-bold text-slate-200">
-          {animationState === "speaking"
-            ? `${config.name} hablando...`
-            : isListening
-            ? "Escuchándote..."
-            : "En línea"}
-        </span>
-      </div>
+              ? "Escuchándote..."
+              : "En línea"}
+          </span>
+        </div>
+      )}
 
       {/* Botón de Diagnóstico 3D GLB si se cargó un modelo o preset */}
-      {glbReport && (
+      {!isCompact && glbReport && (
         <button
           type="button"
           onClick={() => setShowDiagnosticModal(true)}
@@ -1597,60 +1743,64 @@ export const AvatarCanvas: React.FC<AvatarCanvasProps> = ({
       )}
 
       {/* Badge de Especie / Identidad BET */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs font-bold text-amber-300 shadow-sm pointer-events-none">
-        <span className="text-sm">{emoji}</span>
-        <span className="text-slate-100">{config.name}</span>
-        {config.badgeText && (
-          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40">
-            {config.badgeText}
-          </span>
-        )}
-      </div>
+      {!isCompact && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-xs font-bold text-amber-300 shadow-sm pointer-events-none">
+          <span className="text-sm">{emoji}</span>
+          <span className="text-slate-100">{config.name}</span>
+          {config.badgeText && (
+            <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40">
+              {config.badgeText}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Barra de Controles Rápidos de Rotación 3D (Giro 180°, Paso 45°, Reset) */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 px-2 rounded-2xl bg-slate-900 border-2 border-slate-800 shadow-sm">
-        <button
-          type="button"
-          onClick={() => handleRotateBy(Math.PI)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold transition shadow-sm"
-          title="Girar 180° para ver de frente o espalda"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Girar 180°</span>
-        </button>
+      {!isCompact && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 px-2 rounded-2xl bg-slate-900 border-2 border-slate-800 shadow-sm">
+          <button
+            type="button"
+            onClick={() => handleRotateBy(Math.PI)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-b-4 border-amber-500/50 active:border-b-2 active:translate-y-0.5 text-amber-300 text-xs font-bold transition shadow-sm"
+            title="Girar 180° para ver de frente o espalda"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Girar 180°</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleRotateBy(-Math.PI / 4)}
-          className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
-          title="Rotar -45° a la izquierda"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
+          <button
+            type="button"
+            onClick={() => handleRotateBy(-Math.PI / 4)}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
+            title="Rotar -45° a la izquierda"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleRotateBy(Math.PI / 4)}
-          className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
-          title="Rotar +45° a la derecha"
-        >
-          <RotateCw className="w-3.5 h-3.5" />
-        </button>
+          <button
+            type="button"
+            onClick={() => handleRotateBy(Math.PI / 4)}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-xs transition"
+            title="Rotar +45° a la derecha"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
 
-        <button
-          type="button"
-          onClick={handleResetFront}
-          className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-[11px] font-bold transition"
-          title="Restablecer orientación de frente"
-        >
-          Frente
-        </button>
+          <button
+            type="button"
+            onClick={handleResetFront}
+            className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border-2 border-b-4 border-slate-700 active:border-b-2 active:translate-y-0.5 text-[11px] font-bold transition"
+            title="Restablecer orientación de frente"
+          >
+            Frente
+          </button>
 
-        <div className="hidden sm:flex items-center gap-1 pl-1 pr-1 text-[10px] text-slate-400 border-l border-slate-700">
-          <MoveHorizontal className="w-3 h-3 text-slate-400" />
-          <span>360°</span>
+          <div className="hidden sm:flex items-center gap-1 pl-1 pr-1 text-[10px] text-slate-400 border-l border-slate-700">
+            <MoveHorizontal className="w-3 h-3 text-slate-400" />
+            <span>360°</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modal de Diagnóstico Técnico GLB */}
       {showDiagnosticModal && (

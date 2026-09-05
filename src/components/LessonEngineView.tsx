@@ -27,7 +27,7 @@ import { fireParticles } from "../utils/particleHelper";
 import { haptics } from "../utils/haptics";
 import { getQuestionsForLessonNode, LessonQuestion } from "../data/lessonQuestionsData";
 import { AvatarConfig } from "../types";
-import { calculateSimilarity } from "../utils/storage";
+import { evaluatePhrasePronunciation } from "../utils/pronunciationMatcher";
 import { voiceRecognizer } from "../utils/speech";
 import { addMistakeToFlashcards } from "../utils/srs";
 
@@ -135,31 +135,12 @@ export const LessonEngineView: React.FC<LessonEngineViewProps> = ({
   }, [isRecording, currentQuestion]);
 
   const evaluateSpokenSpeech = (spoken: string, target: string) => {
-    const cleanTargetWords = target
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter(Boolean);
-
-    const cleanSpokenWords = spoken
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter(Boolean);
-
-    const scores = cleanTargetWords.map((tWord) => {
-      let maxSim = 0;
-      cleanSpokenWords.forEach((sWord) => {
-        const sim = calculateSimilarity(sWord, tWord);
-        if (sim > maxSim) maxSim = sim;
-      });
-      return { word: tWord, score: Math.round(maxSim * 100) };
-    });
-
-    const avg =
-      scores.length > 0
-        ? Math.round(scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length)
-        : 0;
+    const result = evaluatePhrasePronunciation(spoken, target, 70);
+    const scores = result.wordAccuracies.map((item) => ({
+      word: item.word,
+      score: item.score,
+    }));
+    const avg = result.overallScore;
 
     setSpeechScores(scores);
     setOverallSpeechAccuracy(avg);

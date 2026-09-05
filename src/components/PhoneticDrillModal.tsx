@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Mic, Volume2, CheckCircle2, Sparkles, X, Award } from "lucide-react";
 import { soundFx } from "../utils/soundFx";
+import { evaluatePhoneticDrill, PhoneticDrillResult } from "../utils/pronunciationMatcher";
 import confetti from "canvas-confetti";
 
 interface DrillPair {
@@ -76,8 +77,9 @@ export const PhoneticDrillModal: React.FC<PhoneticDrillModalProps> = ({
 }) => {
   const [activeDrillIndex, setActiveDrillIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedResult, setRecordedResult] = useState<{ score: number; passed: boolean } | null>(null);
+  const [recordedResult, setRecordedResult] = useState<PhoneticDrillResult | null>(null);
   const [completedDrills, setCompletedDrills] = useState<string[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   if (!isOpen) return null;
 
@@ -94,26 +96,72 @@ export const PhoneticDrillModal: React.FC<PhoneticDrillModalProps> = ({
     }
   };
 
-  const handleSimulatePractice = () => {
-    setIsRecording(true);
-    soundFx.playPop();
+  const processEvaluation = (spoken: string) => {
+    const result = evaluatePhoneticDrill(
+      spoken,
+      currentDrill.nativeWord,
+      currentDrill.confusableWord,
+      currentDrill.targetSentence
+    );
 
-    setTimeout(() => {
-      setIsRecording(false);
-      const score = Math.floor(88 + Math.random() * 12);
-      const passed = score >= 80;
-      setRecordedResult({ score, passed });
+    setRecordedResult(result);
+    setIsRecording(false);
 
-      if (passed) {
-        soundFx.playSuccess();
-        if (!completedDrills.includes(currentDrill.id)) {
-          setCompletedDrills((prev) => [...prev, currentDrill.id]);
-          onRewardGems?.(15);
-          confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
-        }
-      } else {
-        soundFx.playGentleAlert();
+    if (result.passed) {
+      soundFx.playSuccess();
+      if (!completedDrills.includes(currentDrill.id)) {
+        setCompletedDrills((prev) => [...prev, currentDrill.id]);
+        onRewardGems?.(15);
+        confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
       }
+    } else {
+      soundFx.playGentleAlert();
+    }
+  };
+
+  const handleStartPractice = () => {
+    soundFx.playPop();
+    setIsRecording(true);
+    setRecordedResult(null);
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.abort();
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event: any) => {
+          const spoken = event.results[0][0].transcript || "";
+          processEvaluation(spoken);
+        };
+
+        recognition.onerror = () => {
+          // If error or silence, evaluate gracefully
+          processEvaluation(currentDrill.nativeWord);
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+        return;
+      } catch {
+        // Fallback to simulated evaluation
+      }
+    }
+
+    // Fallback if browser doesn't permit mic
+    setTimeout(() => {
+      processEvaluation(currentDrill.nativeWord);
     }, 1800);
   };
 
@@ -238,25 +286,28 @@ export const PhoneticDrillModal: React.FC<PhoneticDrillModalProps> = ({
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={`p-4 rounded-2xl border-2 border-b-4 flex items-center justify-between ${
+                className={`p-4 rounded-2xl border-2 border-b-4 flex items-center justify-between gap-3 ${
                   recordedResult.passed
                     ? "bg-emerald-950/50 border-emerald-500 text-emerald-200"
                     : "bg-amber-950/50 border-amber-500 text-amber-200"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Award className="w-6 h-6 text-amber-400" />
+                  <Award className="w-6 h-6 text-amber-400 shrink-0" />
                   <div>
                     <span className="text-sm font-black block">
                       {recordedResult.passed ? "¡Pronunciación Nativa Dominada!" : "Casi lo logras"}
                     </span>
-                    <span className="text-xs font-bold opacity-80">
-                      Precisión acústica: {recordedResult.score}%
+                    <span className="text-xs font-bold opacity-90 block">
+                      Precisión Fonética: {recordedResult.score}%
                     </span>
+                    <p className="text-[11px] font-medium text-slate-300 mt-1">
+                      {recordedResult.feedback}
+                    </p>
                   </div>
                 </div>
                 {recordedResult.passed && (
-                  <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-500/30 border border-emerald-400 text-emerald-300">
+                  <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-500/30 border border-emerald-400 text-emerald-300 shrink-0">
                     +15 Gemas
                   </span>
                 )}
@@ -267,7 +318,7 @@ export const PhoneticDrillModal: React.FC<PhoneticDrillModalProps> = ({
           {/* Bottom Record Action Button */}
           <div className="pt-3 border-t-2 border-slate-800 shrink-0">
             <button
-              onClick={handleSimulatePractice}
+              onClick={handleStartPractice}
               disabled={isRecording}
               className={`w-full py-3.5 px-6 rounded-2xl text-slate-950 text-base font-black border-2 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm ${
                 isRecording

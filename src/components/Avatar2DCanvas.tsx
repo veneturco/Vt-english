@@ -81,6 +81,9 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   const [isMedalGoalCelebrating, setIsMedalGoalCelebrating] = useState<boolean>(false);
   const prevGoalTriggerRef = useRef<number>(dailyGoalAchievedTrigger);
   const lastInteractionTime = useRef<number>(Date.now());
+  const mouthIntensityRef = useRef<number>(mouthIntensity);
+  mouthIntensityRef.current = mouthIntensity;
+  const isMouthActive = mouthIntensity > 0.04;
 
   // Listen for Daily Goal Achievement to trigger Medal Entrance Scale-In celebration
   useEffect(() => {
@@ -136,7 +139,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
         idleSeconds >= 13 &&
         effectiveEmotion === "idle" &&
         !isListening &&
-        mouthIntensity < 0.05 &&
+        mouthIntensityRef.current < 0.05 &&
         !idleNudge
       ) {
         const nudges = [
@@ -152,7 +155,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
     }, 3000);
 
     return () => clearInterval(idleCheckInterval);
-  }, [effectiveEmotion, isListening, mouthIntensity, idleNudge]);
+  }, [effectiveEmotion, isListening, isMouthActive, idleNudge]);
 
   // 2. Natural Micro-Saccades (Subtle living eye glances & cognitive shifts)
   useEffect(() => {
@@ -204,7 +207,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
   useEffect(() => {
     let tiltTimer: NodeJS.Timeout;
     const triggerIdleTilt = () => {
-      if (effectiveEmotion === "idle" && !isListening && mouthIntensity < 0.05) {
+      if (effectiveEmotion === "idle" && !isListening && mouthIntensityRef.current < 0.05) {
         const angles = [-4.2, 0, 4.2, 0, -3.5, 3.5];
         const chosenAngle = angles[Math.floor(Math.random() * angles.length)];
         setIdleHeadAngle(chosenAngle);
@@ -216,14 +219,14 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
     };
     tiltTimer = setTimeout(triggerIdleTilt, 2000);
     return () => clearTimeout(tiltTimer);
-  }, [effectiveEmotion, isListening, mouthIntensity]);
+  }, [effectiveEmotion, isListening, isMouthActive]);
 
   // 4. Phonetic Viseme Harmonic Oscillator during Speech (Lip / Beak Sync)
   useEffect(() => {
     let visemeInterval: NodeJS.Timeout;
     let animId: number;
 
-    if (effectiveEmotion === "speaking" || mouthIntensity > 0.04) {
+    if (effectiveEmotion === "speaking" || isMouthActive) {
       visemeInterval = setInterval(() => {
         // Cycle through speech visemes: 0=open_aa, 1=smile_ee, 2=round_oo, 3=teeth_ch
         setVisemeIndex((prev) => (prev + 1) % 4);
@@ -234,7 +237,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
         const elapsed = (Date.now() - startTime) / 1000;
         // Harmonic rhythm simulating natural syllable speech cadence
         const syllableWave = Math.sin(elapsed * 16) * 0.35 + Math.sin(elapsed * 8) * 0.2 + 0.45;
-        setSpeechAperture(Math.max(0.2, Math.min(1.0, syllableWave + mouthIntensity * 0.5)));
+        setSpeechAperture(Math.max(0.2, Math.min(1.0, syllableWave + mouthIntensityRef.current * 0.5)));
         animId = requestAnimationFrame(updateAperture);
       };
       animId = requestAnimationFrame(updateAperture);
@@ -247,7 +250,7 @@ export const Avatar2DCanvas: React.FC<Avatar2DCanvasProps> = ({
       clearInterval(visemeInterval);
       cancelAnimationFrame(animId);
     };
-  }, [effectiveEmotion, mouthIntensity]);
+  }, [effectiveEmotion, isMouthActive]);
 
   // 5. Parallax tracking with dampening
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

@@ -1,4 +1,4 @@
-import { AvatarConfig, CEFRLevel, ChatMessage, UserStats, VocabularyItem, UserGamificationState } from "../types";
+import { AvatarConfig, CEFRLevel, ChatMessage, UserStats, VocabularyItem, UserGamificationState, AppTheme } from "../types";
 import { AVATAR_PRESETS } from "../data/presets";
 import { saveLargeAsset, getLargeAsset, deleteLargeAsset } from "./idbStorage";
 
@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   VOCABULARY: "vt_vocabulary_v1",
   USER_STATS: "vt_user_stats_v1",
   ACTIVE_TOPIC: "vt_active_topic_v1",
+  APP_THEME: "vt_app_theme_v1",
 };
 
 export function getStoredAvatarConfig(): AvatarConfig {
@@ -298,15 +299,25 @@ export function saveStoredGamification(state: UserGamificationState): void {
   }
 }
 
-export function calculateSimilarity(s1: string, s2: string): number {
-  const clean1 = s1.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const clean2 = s2.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (clean1 === clean2) return 100;
-  if (!clean1 || !clean2) return 0;
-  let matches = 0;
-  const maxLen = Math.max(clean1.length, clean2.length);
-  for (let i = 0; i < Math.min(clean1.length, clean2.length); i++) {
-    if (clean1[i] === clean2[i]) matches++;
+import { calculateSimilarity } from "./pronunciationMatcher";
+export { calculateSimilarity };
+
+export function getStoredAppTheme(): AppTheme {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.APP_THEME);
+    if (saved === "high-contrast-light" || saved === "dark") {
+      return saved;
+    }
+  } catch (err) {
+    console.error("Error reading theme from storage:", err);
   }
-  return Math.round((matches / maxLen) * 100);
+  return "dark";
+}
+
+export function saveStoredAppTheme(theme: AppTheme): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.APP_THEME, theme);
+  } catch (err) {
+    console.error("Error saving theme to storage:", err);
+  }
 }

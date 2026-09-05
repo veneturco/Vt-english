@@ -483,4 +483,6 @@ export interface SeasonalThemeConfig {
   decorativeHeaderIcon?: string;
 }
 
+export type AppTheme = "dark" | "high-contrast-light";
+
 

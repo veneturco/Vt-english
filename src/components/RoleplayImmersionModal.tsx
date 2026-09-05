@@ -81,6 +81,7 @@ export const RoleplayImmersionModal: React.FC<RoleplayImmersionModalProps> = ({
   const recognitionRef = useRef<any>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const aiThinkingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleUserSpeechFinishedRef = useRef<((spokenText: string) => void) | null>(null);
 
   // Auto-scroll fluido al recibir o emitir nuevos mensajes
   useEffect(() => {
@@ -161,7 +162,7 @@ export const RoleplayImmersionModal: React.FC<RoleplayImmersionModalProps> = ({
         }
 
         if (final) {
-          handleUserSpeechFinished(final.trim());
+          handleUserSpeechFinishedRef.current?.(final.trim());
         }
       };
 
@@ -189,7 +190,7 @@ export const RoleplayImmersionModal: React.FC<RoleplayImmersionModalProps> = ({
         } catch {}
       }
     };
-  }, [selectedScenario, responseIndex, messages]);
+  }, [isOpen]);
 
   // Detener toda síntesis y captura de audio
   const stopAllAudio = () => {
@@ -304,6 +305,8 @@ export const RoleplayImmersionModal: React.FC<RoleplayImmersionModalProps> = ({
       speakResponse(nextResponseText);
     }, 1000);
   };
+
+  handleUserSpeechFinishedRef.current = handleUserSpeechFinished;
 
   // Alternar el estado del micrófono
   const toggleListening = () => {

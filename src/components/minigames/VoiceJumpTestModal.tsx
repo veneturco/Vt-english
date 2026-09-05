@@ -150,10 +150,9 @@ export const VoiceJumpTestModal: React.FC<VoiceJumpTestModalProps> = ({
 
       updateMeter();
     } catch (err: any) {
-      console.warn("Microphone access error:", err);
       setHasMicPermission(false);
       setIsMicTesting(false);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
         setMicErrorMessage(
           "El navegador o iframe bloqueó el acceso al micrófono. Si estás en una vista previa integrada, abre la aplicación en una nueva pestaña o usa el simulador de prueba."
         );

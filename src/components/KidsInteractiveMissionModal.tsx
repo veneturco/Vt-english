@@ -118,7 +118,7 @@ export const KidsInteractiveMissionModal: React.FC<KidsInteractiveMissionModalPr
 
   const handleAnswerSubmitted = (answer: string) => {
     const evalResult = validateKidsPronunciation(answer, mission.targetWord);
-    setSuccessScore(evalResult.score);
+    setSuccessScore(evalResult.overallScore);
 
     if (evalResult.isApproved) {
       // Otorgar recompensas en localStorage

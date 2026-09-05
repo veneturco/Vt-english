@@ -19,6 +19,9 @@ import {
   Globe,
   Plane,
   Target,
+  Swords,
+  Eye,
+  HelpCircle,
 } from "lucide-react";
 
 export interface ToolsHubViewProps {
@@ -33,6 +36,9 @@ export interface ToolsHubViewProps {
   onOpenPlacementTest: () => void;
   onOpenResearchRoadmap?: () => void;
   onOpenRoleplay?: () => void;
+  onOpenDebate?: () => void;
+  onOpenVisualLearning?: () => void;
+  onOpenGuessTheWord?: () => void;
   onSwitchToKidsMode: () => void;
   onOpenSeasonalTheme?: () => void;
   onOpenLeaderboard?: () => void;
@@ -56,6 +62,9 @@ export function ToolsHubView({
   onOpenPlacementTest,
   onOpenResearchRoadmap,
   onOpenRoleplay,
+  onOpenDebate,
+  onOpenVisualLearning,
+  onOpenGuessTheWord,
   onSwitchToKidsMode,
   onOpenSeasonalTheme,
   onOpenLeaderboard,
@@ -68,6 +77,30 @@ export function ToolsHubView({
 }: ToolsHubViewProps) {
   // Lista de herramientas ultra-minimalistas sin párrafos de texto (Zero-Text Rule)
   const toolItems = [
+    {
+      id: "guess_the_word",
+      title: "Adivina la Palabra 🔤",
+      icon: HelpCircle,
+      iconColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+      action: onOpenGuessTheWord,
+    },
+    {
+      id: "visual_learning",
+      title: "Desafío Visual 🖼️",
+      icon: Eye,
+      iconColor: "text-amber-500",
+      bgColor: "bg-amber-50",
+      action: onOpenVisualLearning,
+    },
+    {
+      id: "debate_arena",
+      title: "Arena de Debate ⚔️",
+      icon: Swords,
+      iconColor: "text-rose-600",
+      bgColor: "bg-rose-50",
+      action: onOpenDebate,
+    },
     {
       id: "accents",
       title: "Acentos Globales 🌐",

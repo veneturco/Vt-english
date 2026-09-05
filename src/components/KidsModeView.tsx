@@ -18,6 +18,7 @@ import {
   saveStoredKidsProgress,
   kidsSFX,
 } from "../utils/kidsAudioAndStorage";
+import { validateKidsPronunciation } from "../utils/pronunciationMatcher";
 import { soundFx } from "../utils/soundFx";
 import {
   playCoinSound,
@@ -597,16 +598,11 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
 
       recognition.onresult = (event: any) => {
         setIsListening(false);
-        const rawTranscript = event.results[0][0].transcript;
+        const rawTranscript = event.results[0][0].transcript || "";
         setVoiceJumpTranscript(rawTranscript);
-        const transcript = rawTranscript.toLowerCase();
-        const target = currentCard.englishWord.toLowerCase();
 
-        // High tolerance recognition for kids
-        const isAcceptable =
-          transcript.includes(target) ||
-          target.includes(transcript) ||
-          (ageGroup === "preschool" && transcript.length >= 2);
+        const evalResult = validateKidsPronunciation(rawTranscript, currentCard.englishWord);
+        const isAcceptable = evalResult.isApproved || (ageGroup === "preschool" && rawTranscript.trim().length >= 2);
 
         if (isAcceptable) {
           setIsMascotJumping(true);
@@ -623,7 +619,7 @@ export const KidsModeView: React.FC<KidsModeViewProps> = ({
           setComboCount(0);
           setMascotMood("encouraging");
           setFeedbackMessage({
-            text: `¡Casi! Escucha a ${currentCompanion.name.split(" ")[0]} y repite: "${currentCard.englishWord}" ⭐`,
+            text: `¡Casi! (${evalResult.overallScore}%). Escucha a ${currentCompanion.name.split(" ")[0]} y repite: "${currentCard.englishWord}" ⭐`,
             type: "try_again",
           });
         }

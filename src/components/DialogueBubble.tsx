@@ -14,9 +14,11 @@ import {
   Mic,
   Smile,
   Zap,
+  Activity,
 } from "lucide-react";
 import { ChatMessage, VocabularyItem } from "../types";
 import { WordPopup } from "./WordPopup";
+import { useMicVolume } from "../utils/useMicVolume";
 
 interface DialogueBubbleProps {
   currentMessage: ChatMessage | null;
@@ -31,6 +33,7 @@ interface DialogueBubbleProps {
   avatarEmoji?: string;
   avatarBadge?: string;
   isLoading?: boolean;
+  micVolume?: number;
 }
 
 export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
@@ -46,6 +49,7 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
   avatarEmoji = "🐦",
   avatarBadge,
   isLoading = false,
+  micVolume: propMicVolume,
 }) => {
   const [showTranslation, setShowTranslation] = useState(false);
   const [showTip, setShowTip] = useState(false);
@@ -54,9 +58,29 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
     pos: { x: number; y: number };
   } | null>(null);
 
+  // Fallback to local mic volume tracker if prop is not provided
+  const { volume: localMicVolume } = useMicVolume(true);
+  const activeMicVolume = propMicVolume !== undefined ? propMicVolume : localMicVolume;
+
+  // Dynamic Glassmorphism computations based on ambient noise / mic volume
+  // Background alpha shifts dynamically between 0.78 (quiet) and 0.95 (active speech/noise)
+  const dynamicAlpha = 0.78 + activeMicVolume * 0.18;
+  // Backdrop blur intensity shifts between 12px and 30px based on ambient microphone level
+  const dynamicBlur = 12 + activeMicVolume * 18;
+  // Dynamic border glow ring alpha
+  const borderAlpha = 0.4 + activeMicVolume * 0.5;
+
   if (isLoading) {
     return (
-      <div className="w-full max-w-2xl mx-auto p-4 sm:p-5 rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm text-slate-200 animate-pulse">
+      <div
+        className="w-full max-w-2xl mx-auto p-4 sm:p-5 rounded-3xl border-2 border-b-4 shadow-xl transition-all duration-300 text-slate-200 animate-pulse"
+        style={{
+          backgroundColor: `rgba(15, 23, 42, ${dynamicAlpha})`,
+          backdropFilter: `blur(${dynamicBlur}px)`,
+          WebkitBackdropFilter: `blur(${dynamicBlur}px)`,
+          borderColor: `rgba(51, 65, 85, ${borderAlpha})`,
+        }}
+      >
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
           <p className="text-sm sm:text-base text-emerald-300 font-bold">
@@ -95,13 +119,30 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
         />
       )}
 
-      {/* Main Dialogue Card */}
+      {/* Main Dialogue Card with Dynamic Glassmorphism (Adjusts transparency and blur based on ambient mic volume) */}
       <div
         id="tutor-dialogue-card"
-        className="w-full p-4 sm:p-6 rounded-3xl bg-slate-900 border-2 border-b-4 border-slate-800 shadow-sm transition-all duration-300"
+        className="w-full p-4 sm:p-6 rounded-3xl border-2 border-b-4 shadow-xl transition-all duration-200 relative overflow-hidden"
+        style={{
+          backgroundColor: `rgba(15, 23, 42, ${dynamicAlpha})`,
+          backdropFilter: `blur(${dynamicBlur}px)`,
+          WebkitBackdropFilter: `blur(${dynamicBlur}px)`,
+          borderColor: `rgba(51, 65, 85, ${borderAlpha})`,
+          boxShadow: activeMicVolume > 0.03
+            ? `0 12px 30px -8px rgba(56, 189, 248, ${activeMicVolume * 0.3}), 0 0 20px rgba(245, 158, 11, ${activeMicVolume * 0.22})`
+            : "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+        }}
       >
+        {/* Ambient acoustic glassmorphism reflection sheen */}
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(circle at 80% 20%, rgba(56, 189, 248, ${activeMicVolume * 0.18}), transparent 60%)`,
+          }}
+        />
+
         {/* Header line of Teacher */}
-        <div className="flex items-center justify-between pb-3 mb-3.5 border-b-2 border-slate-800">
+        <div className="flex items-center justify-between pb-3 mb-3.5 border-b-2 border-slate-800 relative z-10">
           <div className="flex items-center gap-2">
             <span className="text-base">{avatarEmoji}</span>
             <div className="flex items-center gap-2">
@@ -120,7 +161,21 @@ export const DialogueBubble: React.FC<DialogueBubbleProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
-            <span className="text-[10px] px-2.5 py-0.5 rounded-xl bg-slate-800 text-slate-300 font-bold border-2 border-slate-700">
+            {/* Ambient Noise / Mic Glassmorphism Level indicator pill */}
+            <div
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[10px] font-black border transition-all duration-300"
+              style={{
+                backgroundColor: activeMicVolume > 0.02 ? "rgba(14, 165, 233, 0.2)" : "rgba(30, 41, 59, 0.8)",
+                borderColor: activeMicVolume > 0.02 ? "rgba(56, 189, 248, 0.5)" : "rgba(51, 65, 85, 0.8)",
+                color: activeMicVolume > 0.02 ? "#38bdf8" : "#94a3b8",
+              }}
+              title="Glassmorphism acústico reactivo al ruido ambiente"
+            >
+              <Activity className="w-3 h-3 animate-pulse" />
+              <span>Mic: {Math.round(activeMicVolume * 100)}%</span>
+            </div>
+
+            <span className="text-[10px] px-2.5 py-0.5 rounded-xl bg-slate-800 text-slate-300 font-bold border-2 border-slate-700 hidden sm:inline-block">
               Toca palabras para traducir
             </span>
           </div>

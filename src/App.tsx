@@ -14,6 +14,7 @@ import {
   WordAccuracy,
   ScenarioGoal,
   AppExperienceMode,
+  AppTheme,
 } from "./types";
 import {
   getStoredAvatarConfig,
@@ -23,6 +24,8 @@ import {
   getStoredTopic,
   getStoredVocabulary,
   getStoredGamification,
+  getStoredAppTheme,
+  saveStoredAppTheme,
   saveAvatarConfig,
   saveStoredHistory,
   saveStoredLevel,
@@ -30,9 +33,12 @@ import {
   saveStoredTopic,
   saveStoredVocabulary,
   saveStoredGamification,
-  calculateSimilarity,
   restoreLargeAvatarAssets,
 } from "./utils/storage";
+import {
+  calculateSimilarity,
+  evaluatePhrasePronunciation,
+} from "./utils/pronunciationMatcher";
 import { TOPIC_SCENARIOS, AVATAR_PRESETS, TEACHING_MODES } from "./data/presets";
 import { speakText, stopSpeaking, voiceRecognizer, prewarmAudioContext } from "./utils/speech";
 import { useMicVolume } from "./utils/useMicVolume";
@@ -93,6 +99,9 @@ import { AvatarAccuracyRing } from "./components/AvatarAccuracyRing";
 import { AvatarLevelCheckpointBorder } from "./components/AvatarLevelCheckpointBorder";
 import { PhoneticDrillModal } from "./components/PhoneticDrillModal";
 import { VoiceCallModal } from "./components/VoiceCallModal";
+import { DebateArenaModal } from "./components/DebateArenaModal";
+import { VisualLearningModal } from "./components/VisualLearningModal";
+import { GuessTheWordModal } from "./components/GuessTheWordModal";
 import { CustomScenarioPromptModal } from "./components/CustomScenarioPromptModal";
 import { SpeedSpeakingChallengeModal } from "./components/SpeedSpeakingChallengeModal";
 import { SkillRadarModal } from "./components/SkillRadarModal";
@@ -135,6 +144,13 @@ export default function App() {
   const [vocabulary, setVocabulary] = useState<VocabularyItem[]>(getStoredVocabulary);
   const [userStats, setUserStats] = useState<UserStats>(getStoredStats);
   const [gamification, setGamification] = useState<UserGamificationState>(getStoredGamification);
+  const [appTheme, setAppTheme] = useState<AppTheme>(getStoredAppTheme);
+
+  const handleToggleTheme = (newTheme: AppTheme) => {
+    setAppTheme(newTheme);
+    saveStoredAppTheme(newTheme);
+    soundFx.playPop();
+  };
 
   // Pronunciation Evaluation State
   const [lastSpokenText, setLastSpokenText] = useState<string>("");
@@ -262,9 +278,22 @@ export default function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isProgressDashboardOpen, setIsProgressDashboardOpen] = useState(false);
   const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false);
+  const isVoiceCallOpenRef = useRef(false);
+  useEffect(() => {
+    isVoiceCallOpenRef.current = isVoiceCallOpen;
+  }, [isVoiceCallOpen]);
+
+  const handleOpenVoiceCall = useCallback(() => {
+    voiceRecognizer.stopListening();
+    setIsListening(false);
+    setIsVoiceCallOpen(true);
+  }, []);
   const [isGlobalAccentsOpen, setIsGlobalAccentsOpen] = useState(false);
   const [isStarInterviewOpen, setIsStarInterviewOpen] = useState(false);
   const [isOfflineCommuteOpen, setIsOfflineCommuteOpen] = useState(false);
+  const [isDebateModalOpen, setIsDebateModalOpen] = useState(false);
+  const [isVisualLearningOpen, setIsVisualLearningOpen] = useState(false);
+  const [isGuessTheWordOpen, setIsGuessTheWordOpen] = useState(false);
   const [isAirplaneMode, setIsAirplaneMode] = useState<boolean>(() => checkAirplaneModeActive());
   const [isSeasonalThemeModalOpen, setIsSeasonalThemeModalOpen] = useState(false);
   const [activeCompanionPanel, setActiveCompanionPanel] = useState<"none" | "quests" | "scenario" | "idiom">("none");
@@ -344,11 +373,12 @@ export default function App() {
 
   useEffect(() => {
     if (activeMainTab === "chat") {
+      stageScaleAnimation.set({ opacity: 1, scale: 1, y: 0 });
       stageScaleAnimation.start({
         opacity: 1,
         scale: 1,
         y: 0,
-        transition: { duration: 0.35, ease: "easeOut" },
+        transition: { duration: 0.25, ease: "easeOut" },
       });
     }
   }, [activeMainTab, stageScaleAnimation]);
@@ -695,8 +725,8 @@ export default function App() {
             setAnimationState("idle");
           }, 2000);
 
-          // FLUIDEZ MANOS LIBRES: Si está activado, activar el micrófono para el turno del estudiante
-          if (handsFreeMode) {
+          // FLUIDEZ MANOS LIBRES: Si está activado y no estamos en llamada, activar el micrófono para el turno del estudiante
+          if (handsFreeMode && !isVoiceCallOpenRef.current) {
             setTimeout(() => {
               voiceRecognizer.startListening();
             }, 350);
@@ -796,8 +826,11 @@ export default function App() {
     messages,
     vocabulary,
     userStats,
-    activeLessonNode,
-    latestTutorMessage,
+    activeLessonNode?.id,
+    activeLessonNode?.title,
+    latestTutorMessage?.targetEnglishPhrase,
+    latestTutorMessage?.phoneticGuide,
+    latestTutorMessage?.pedagogicalTip,
     saveSession,
   ]);
 
@@ -823,28 +856,10 @@ export default function App() {
       setTargetPhraseToEvaluate(currentTarget);
       setLastSpokenText(text.trim());
 
-      const spokenWords = text.trim().toLowerCase().split(/\s+/);
-      const targetWords = currentTarget.toLowerCase().replace(/[.,!?;:]/g, "").split(/\s+/);
-
-      const calculatedAccuracies: WordAccuracy[] = targetWords.map((tWord) => {
-        let bestMatch = 0;
-        spokenWords.forEach((sWord) => {
-          const sim = calculateSimilarity(sWord, tWord);
-          if (sim > bestMatch) bestMatch = sim;
-        });
-        return {
-          word: tWord,
-          score: bestMatch,
-          isTarget: true,
-        };
-      });
-
-      const avgScore = Math.round(
-        calculatedAccuracies.reduce((acc, curr) => acc + curr.score, 0) / (calculatedAccuracies.length || 1)
-      );
-
-      setWordAccuracies(calculatedAccuracies);
-      setOverallPronunciationScore(avgScore);
+      const phraseResult = evaluatePhrasePronunciation(text.trim(), currentTarget);
+      setWordAccuracies(phraseResult.wordAccuracies);
+      setOverallPronunciationScore(phraseResult.overallScore);
+      const avgScore = phraseResult.overallScore;
 
       // Reward Gamification XP & Gems on high scores
       if (avgScore >= 80) {
@@ -1086,6 +1101,12 @@ export default function App() {
     }
   };
 
+  const handleSendMessageRef = useRef(handleSendMessage);
+  handleSendMessageRef.current = handleSendMessage;
+  const stableSendMessage = useCallback((text: string) => {
+    return handleSendMessageRef.current(text);
+  }, []);
+
   // Practice target phrase immediately
   const handlePracticePhrase = (phrase: string) => {
     handleSendMessage(phrase);
@@ -1212,7 +1233,14 @@ export default function App() {
 
   // If user is in Kids Mode, render dedicated Kids Experience View with cross-fade
   return (
-    <div className={`min-h-screen ${seasonalThemeConfig.colors.bgRoot} bg-gradient-to-b ${seasonalThemeConfig.colors.bgGradient} text-slate-100 flex flex-col font-sans ${seasonalThemeConfig.colors.selection} relative overflow-x-hidden transition-colors duration-500`}>
+    <div
+      data-theme={appTheme}
+      className={`min-h-screen ${
+        appTheme === "high-contrast-light"
+          ? "bg-slate-900 text-slate-100 theme-high-contrast"
+          : `${seasonalThemeConfig.colors.bgRoot} bg-gradient-to-b ${seasonalThemeConfig.colors.bgGradient} text-slate-100`
+      } flex flex-col font-sans ${seasonalThemeConfig.colors.selection} relative overflow-x-hidden transition-colors duration-500`}
+    >
       {/* Dynamic Seasonal Gentle Particles Layer */}
       <SeasonalParticlesCanvas
         themeConfig={seasonalThemeConfig}
@@ -1369,7 +1397,7 @@ export default function App() {
                 onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
                 onSwitchToKidsMode={handleSwitchToKidsMode}
                 onOpenDailyBlitz={() => setIsDailyBlitzOpen(true)}
-                onOpenVoiceCall={() => setIsVoiceCallOpen(true)}
+                onOpenVoiceCall={handleOpenVoiceCall}
                 onOpenIndustryModal={() => setIsIndustryModalOpen(true)}
                 onOpenSkillRadar={() => setIsSkillRadarOpen(true)}
                 onOpenAudioImmersion={() => setIsAudioImmersionOpen(true)}
@@ -1437,6 +1465,9 @@ export default function App() {
                 onOpenPlacementTest={() => setIsPlacementTestOpen(true)}
                 onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
                 onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
+                onOpenDebate={() => setIsDebateModalOpen(true)}
+                onOpenVisualLearning={() => setIsVisualLearningOpen(true)}
+                onOpenGuessTheWord={() => setIsGuessTheWordOpen(true)}
                 onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
                 onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
                 onOpenGlobalAccents={() => setIsGlobalAccentsOpen(true)}
@@ -1520,7 +1551,7 @@ export default function App() {
                     "--stage-mouse-py": `${((stageMousePos.y + 0.5) * 100).toFixed(1)}%`,
                   } as React.CSSProperties
                 }
-                initial={{ opacity: 0, scale: 0.98, y: 8 }}
+                initial={{ opacity: 1, scale: 1, y: 0 }}
                 animate={stageScaleAnimation}
                 whileTap={{ scale: 0.985 }}
                 className={`w-full min-h-[280px] sm:min-h-[320px] max-h-[380px] grid grid-rows-[auto_minmax(200px,1fr)_auto] relative rounded-3xl border-2 border-b-4 shadow-sm overflow-hidden select-none transition-all duration-300 p-3 sm:p-4 gap-2 cursor-pointer ${
@@ -1644,7 +1675,7 @@ export default function App() {
                         id="avatar-body"
                         data-avatar-body="true"
                         data-mascot-body="true"
-                        className="avatar-body-component w-full h-full flex items-center justify-center relative cursor-pointer"
+                        className="avatar-body-component w-full h-full min-h-[220px] sm:min-h-[260px] flex items-center justify-center relative cursor-pointer"
                       >
                         <Avatar2DCanvas
                           config={avatarConfig}
@@ -1914,7 +1945,7 @@ export default function App() {
               <section className="w-full sticky bottom-16 sm:bottom-20 z-20">
                 <InteractionBar
                   quickChips={currentQuickChips}
-                  onSendMessage={handleSendMessage}
+                  onSendMessage={stableSendMessage}
                   isListening={isListening}
                   setIsListening={setIsListening}
                   isLoading={isLoading}
@@ -1923,7 +1954,7 @@ export default function App() {
                   setHandsFreeMode={setHandsFreeMode}
                   onOpenHistory={() => setIsHistoryModalOpen(true)}
                   historyCount={messages.length}
-                  onOpenVoiceCall={() => setIsVoiceCallOpen(true)}
+                  onOpenVoiceCall={handleOpenVoiceCall}
                   onOpenSpeedSpeaking={() => setIsSpeedChallengeOpen(true)}
                   onOpenCustomScenario={() => setIsCustomScenarioOpen(true)}
                   onOpenSkillRadar={() => setIsSkillRadarOpen(true)}
@@ -2012,6 +2043,8 @@ export default function App() {
         onDeleteItem={handleDeleteVocabulary}
         onToggleMastered={handleToggleMastered}
         onSpeakWord={handleSpeakWord}
+        theme={appTheme}
+        onToggleTheme={handleToggleTheme}
       />
 
       <WaveformEchoTrainerModal
@@ -2075,11 +2108,16 @@ export default function App() {
         onOpenGamification={() => setIsGamificationModalOpen(true)}
         onOpenResearchRoadmap={() => setIsResearchRoadmapOpen(true)}
         onOpenRoleplay={() => setIsRoleplayModalOpen(true)}
+        onOpenDebate={() => setIsDebateModalOpen(true)}
+        onOpenVisualLearning={() => setIsVisualLearningOpen(true)}
+        onOpenGuessTheWord={() => setIsGuessTheWordOpen(true)}
         onSwitchToKidsMode={handleSwitchToKidsMode}
         onOpenSeasonalTheme={() => setIsSeasonalThemeModalOpen(true)}
         streakDays={gamification.streakDays}
         gemsCount={gamification.gems}
         ambienceMode={ambienceMode}
+        theme={appTheme}
+        onToggleTheme={handleToggleTheme}
       />
 
       <TranscriptHistory
@@ -2228,7 +2266,7 @@ export default function App() {
         topicTitle={victoryModalState.topicTitle}
       />
 
-      {/* 1. Full-Screen Voice Call Modal (Hands-Free with VAD) */}
+      {/* 1. Full-Screen Voice Call Modal (Hands-Free with VAD & Live Avatar) */}
       <VoiceCallModal
         isOpen={isVoiceCallOpen}
         onClose={() => setIsVoiceCallOpen(false)}
@@ -2236,9 +2274,13 @@ export default function App() {
         avatarEmoji={avatarConfig.characterEmoji || "🐦"}
         topicTitle={activeTopic.title}
         isTutorSpeaking={isPlayingAudio}
-        onSendMessage={handleSendMessage}
+        onSendMessage={stableSendMessage}
         latestTutorMessage={latestTutorMessage?.text || ""}
         latestSpanishTranslation={latestTutorMessage?.spanishTranslation || latestTutorMessage?.teacherCommentary}
+        avatarConfig={avatarConfig}
+        mouthIntensity={mouthIntensity}
+        isLoading={isLoading}
+        onSaveVocabulary={handleSaveVocabulary}
         onRewardXp={(xp) => {
           const updatedGam = {
             ...gamification,
@@ -2249,6 +2291,64 @@ export default function App() {
           saveStoredGamification(updatedGam);
         }}
       />
+
+      {/* Debate Arena Modal (Opposing Stance / Critical Thinking & Persuasive Rhetoric) */}
+      {isDebateModalOpen && (
+        <DebateArenaModal
+          isOpen={isDebateModalOpen}
+          onClose={() => setIsDebateModalOpen(false)}
+          avatarConfig={avatarConfig}
+          onSaveVocabulary={handleSaveVocabulary}
+          onRewardXp={(xp) => {
+            const updatedGam = {
+              ...gamification,
+              xpPoints: gamification.xpPoints + xp,
+              gems: gamification.gems + 8,
+            };
+            setGamification(updatedGam);
+            saveStoredGamification(updatedGam);
+          }}
+        />
+      )}
+
+      {/* Visual Learning / Duolingo-style Picture & Sound Challenge */}
+      {isVisualLearningOpen && (
+        <VisualLearningModal
+          isOpen={isVisualLearningOpen}
+          onClose={() => setIsVisualLearningOpen(false)}
+          avatarConfig={avatarConfig}
+          onSaveVocabulary={handleSaveVocabulary}
+          onRewardXp={(xp, gems) => {
+            const updatedGam = {
+              ...gamification,
+              xpPoints: gamification.xpPoints + xp,
+              gems: gamification.gems + gems,
+            };
+            setGamification(updatedGam);
+            saveStoredGamification(updatedGam);
+          }}
+        />
+      )}
+
+      {/* Adivina la Palabra - Image Spelling & Vocabulary Game */}
+      {isGuessTheWordOpen && (
+        <GuessTheWordModal
+          isOpen={isGuessTheWordOpen}
+          onClose={() => setIsGuessTheWordOpen(false)}
+          avatarConfig={avatarConfig}
+          userStreak={gamification.streakDays}
+          userGems={gamification.gems}
+          onRewardXp={(xp, gems) => {
+            const updatedGam = {
+              ...gamification,
+              xpPoints: gamification.xpPoints + xp,
+              gems: gamification.gems + gems,
+            };
+            setGamification(updatedGam);
+            saveStoredGamification(updatedGam);
+          }}
+        />
+      )}
 
       {/* 2. Industry Track Selector Modal */}
       <IndustrySelectorModal

@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { AvatarConfig } from "../types";
 import { speakText } from "../utils/speech";
+import { evaluatePhrasePronunciation } from "../utils/pronunciationMatcher";
 
 interface PhoneticCoachModalProps {
   isOpen: boolean;
@@ -435,26 +436,19 @@ export const PhoneticCoachModal: React.FC<PhoneticCoachModalProps> = ({
     setFeedbackFeedback(null);
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase().trim();
-      const target = targetWord.toLowerCase().trim();
-
+      const transcript = event.results[0][0].transcript || "";
       setIsListening(false);
 
-      if (transcript.includes(target) || target.includes(transcript)) {
-        const score = Math.floor(Math.random() * 10) + 91; // 91-100%
-        setPronunciationScore(score);
-        setFeedbackFeedback(`¡Brillante pronunciación de "${targetWord}"! Reconocido con precisión.`);
+      const evalResult = evaluatePhrasePronunciation(transcript, targetWord, 75);
+      setPronunciationScore(evalResult.overallScore);
+      setFeedbackFeedback(evalResult.feedback);
+
+      if (evalResult.overallScore >= 80) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 },
         });
-      } else {
-        const score = Math.floor(Math.random() * 18) + 65; // 65-82%
-        setPronunciationScore(score);
-        setFeedbackFeedback(
-          `Dijiste: "${transcript}". Intenta ajustar la posición de la lengua y sopla con más suavidad.`
-        );
       }
     };
 

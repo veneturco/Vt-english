@@ -1,4 +1,7 @@
 import { haptics } from "./haptics";
+import { playDynamicEchoFanfare } from "./dynamicFanfareEngine";
+
+export { playDynamicEchoFanfare };
 
 /**
  * Sintetizador de Audio Procedural 8-bit con Web Audio API Nativa

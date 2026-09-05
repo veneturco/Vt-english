@@ -73,7 +73,7 @@ export const InteractionBar: React.FC<InteractionBarProps> = ({
           voiceRecognizer.stopListening();
           setIsListening(false);
         } else if (text.trim().length >= 2) {
-          // Pausa natural e inteligente: 1.1s de silencio tras frase para enviar sin retrasos
+          // Pausa natural e inteligente: 1.9s de silencio para permitir pausas cognitivas naturales sin cortes prematuros
           silenceTimer = window.setTimeout(() => {
             if (voiceRecognizer.getIsListening() && text.trim()) {
               onSendMessage(text.trim());
@@ -81,7 +81,7 @@ export const InteractionBar: React.FC<InteractionBarProps> = ({
               voiceRecognizer.stopListening();
               setIsListening(false);
             }
-          }, 1150);
+          }, 1900);
         }
       },
       onError: (err) => {
